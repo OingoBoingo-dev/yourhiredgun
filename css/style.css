@@ -365,6 +365,100 @@ a:hover { color: var(--ember); }
   margin-top: 6px;
 }
 
+/* ============================================================
+   VIDEOS
+   ============================================================ */
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 28px;
+  margin-top: 8px;
+}
+
+.video-card {
+  text-decoration: none;
+  display: block;
+  border: 1px solid var(--line);
+  background: var(--ink-soft);
+  transition: border-color 0.25s ease, transform 0.25s ease;
+  cursor: pointer;
+}
+.video-card:hover {
+  border-color: var(--ember);
+  transform: translateY(-4px);
+}
+
+.video-card .vthumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000;
+}
+.video-card .vthumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.85);
+  transition: transform 0.5s ease, filter 0.4s ease;
+}
+.video-card:hover .vthumb img {
+  transform: scale(1.08);
+  filter: grayscale(0);
+}
+.video-card .play-badge {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px; height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+  font-size: 18px;
+  color: var(--paper);
+  background: rgba(8, 6, 8, 0.65);
+  border: 1px solid var(--paper-dim);
+  border-radius: 50%;
+  transition: border-color 0.25s ease, color 0.25s ease;
+}
+.video-card:hover .play-badge { border-color: var(--ember); color: var(--ember); }
+
+.video-card .meta { padding: 16px 18px 18px; }
+.video-card .meta h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper);
+}
+.video-card .meta .date {
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: var(--ochre);
+}
+.video-card .meta .count {
+  font-size: 12px;
+  color: var(--paper-dim);
+  margin-top: 6px;
+}
+
+/* video lightbox player */
+.video-shell {
+  width: min(92vw, 1100px);
+  aspect-ratio: 16 / 9;
+  cursor: default;
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.9);
+}
+.video-shell iframe,
+.video-shell video {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #000;
+}
+
 /* ----- single project view ----- */
 
 .project-desc {

@@ -215,6 +215,60 @@
     });
   }
 
+  /* ---------------- video helpers ---------------- */
+  // single-file uploads (MP4s, interactive HTML) go through the GitHub API
+  // as one base64 commit — keep them modest so commits stay reliable
+  var MAX_FILE_MB = 25;
+
+  function tooBig(file) {
+    if (file && file.size > MAX_FILE_MB * 1024 * 1024) {
+      status('“' + file.name + '” is ' + (file.size / 1048576).toFixed(1) +
+        ' MB — the limit is ' + MAX_FILE_MB + ' MB. For video, upload it to YouTube (unlisted works) and add it by URL instead.', 'err');
+      return true;
+    }
+    return false;
+  }
+
+  function ytIdOf(url) {
+    var m = String(url || '').match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  // oEmbed lookup via noembed.com (CORS-friendly) — title + thumbnail for most platforms
+  function fetchOembed(url) {
+    return fetch('https://noembed.com/embed?url=' + encodeURIComponent(url))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return (j && !j.error) ? j : null; })
+      .catch(function () { return null; });
+  }
+
+  // grab a thumbnail from ~1s into an MP4, as base64 jpeg (null if it fails)
+  function captureVideoThumb(file) {
+    return new Promise(function (resolve) {
+      var v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      var url = URL.createObjectURL(file);
+      var done = false;
+      function finish(b64) { if (done) return; done = true; URL.revokeObjectURL(url); resolve(b64); }
+      setTimeout(function () { finish(null); }, 15000);
+      v.onloadeddata = function () {
+        try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch (e) { finish(null); }
+      };
+      v.onseeked = function () {
+        try {
+          var scale = Math.min(1, 1280 / (v.videoWidth || 1280));
+          var cv = document.createElement('canvas');
+          cv.width = Math.round(v.videoWidth * scale);
+          cv.height = Math.round(v.videoHeight * scale);
+          cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
+          finish(cv.toDataURL('image/jpeg', 0.84).split(',')[1]);
+        } catch (e) { finish(null); }
+      };
+      v.onerror = function () { finish(null); };
+      v.src = url;
+    });
+  }
+
   function extOf(name) {
     var m = name.toLowerCase().match(/\.(jpe?g|png|gif|webp)$/);
     return m ? (m[1] === 'jpeg' ? 'jpg' : m[1]) : 'jpg';
@@ -288,7 +342,7 @@
   });
 
   /* ================= LISTS ================= */
-  var cache = { links: [], projects: [] };
+  var cache = { links: [], projects: [], videos: [] };
 
   function loadLists() {
     readJsonFile('data/links.json').then(function (f) {
@@ -317,6 +371,20 @@
           '</span></div><div class="edit-slot"></div></li>';
       });
       $('projList').innerHTML = html || '<li><span class="item-sub">No projects yet.</span></li>';
+    });
+    readJsonFile('data/videos.json').then(function (f) {
+      cache.videos = f.data;
+      var html = '';
+      f.data.forEach(function (v, i) {
+        html += '<li><div class="item-row"><span class="item-title">' + esc(v.title) +
+          ' <span class="item-sub">' + (v.type === 'file' ? 'mp4' : esc(v.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) +
+          ' · ' + esc(v.date || '') + '</span></span>' +
+          '<span class="item-btns">' +
+          '<button class="btn mini" data-edit-vid="' + i + '">Edit</button>' +
+          '<button class="btn danger" data-del-vid="' + i + '">Delete</button>' +
+          '</span></div><div class="edit-slot"></div></li>';
+      });
+      $('vidList').innerHTML = html || '<li><span class="item-sub">No videos yet.</span></li>';
     });
   }
 
@@ -451,6 +519,7 @@
     var rmIntEl = form.querySelector('.ef-rm-int');
     var rmInt = rmIntEl ? rmIntEl.checked : false;
     if (!title) { status('Title can’t be empty.', 'err'); return; }
+    if (tooBig(intFile)) return;
     t.disabled = true;
 
     // convert any new files (PDFs expand to one image per page)
@@ -527,6 +596,144 @@
     }).catch(function (err) { status(err.message, 'err'); t.disabled = false; });
   });
 
+  /* ================= VIDEOS ================= */
+  $('addVidUrlForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = $('vidUrl').value.trim();
+    var manual = $('vidUrlTitle').value.trim();
+    var btn = $('addVidUrlBtn'); btn.disabled = true;
+    status('Looking up video info…', 'busy');
+    fetchOembed(url).then(function (info) {
+      var yt = ytIdOf(url);
+      var thumb = (info && info.thumbnail_url) || (yt ? 'https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg' : '');
+      var title = manual || (info && info.title) || url.replace(/^https?:\/\/(www\.)?/, '');
+      status('Saving video…', 'busy');
+      return readJsonFile('data/videos.json').then(function (f) {
+        f.data.push({ type: 'embed', title: title, url: url, thumb: thumb, date: today() });
+        return writeJsonFile('data/videos.json', f.data, 'Add video: ' + title, f.sha);
+      }).then(function () {
+        status(thumb
+          ? 'Video saved. Live in about a minute.'
+          : 'Video saved, but no thumbnail was found for this platform — the card will show a plain play button.', 'ok');
+        $('addVidUrlForm').reset();
+        loadLists();
+      });
+    }).catch(function (err) { status(err.message, 'err'); })
+      .finally(function () { btn.disabled = false; });
+  });
+
+  $('addVidFileForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var file = $('vidFile').files[0];
+    var title = $('vidFileTitle').value.trim();
+    if (!file) { status('Choose an MP4 file.', 'err'); return; }
+    if (tooBig(file)) return;
+    var btn = $('addVidFileBtn'); btn.disabled = true;
+    var slug = slugify(title) + '-' + Date.now().toString(36);
+    status('Grabbing a thumbnail from the video…', 'busy');
+    captureVideoThumb(file).then(function (thumbB64) {
+      var thumbPath = '';
+      var p = Promise.resolve();
+      if (thumbB64) {
+        thumbPath = 'images/videos/' + slug + '.jpg';
+        p = p.then(function () { return ghPut(thumbPath, thumbB64, 'Add video thumbnail: ' + title); });
+      }
+      return p.then(function () {
+        status('Uploading video (' + (file.size / 1048576).toFixed(1) + ' MB)… this can take a minute.', 'busy');
+        return fileToB64Raw(file);
+      }).then(function (b64) {
+        var srcPath = 'videos/' + slug + '.mp4';
+        return ghPut(srcPath, b64, 'Add video: ' + title).then(function () {
+          status('Saving video…', 'busy');
+          return readJsonFile('data/videos.json').then(function (f) {
+            f.data.push({ type: 'file', title: title, src: srcPath, thumb: thumbPath, date: today() });
+            return writeJsonFile('data/videos.json', f.data, 'Add video: ' + title, f.sha);
+          });
+        });
+      });
+    }).then(function () {
+      status('Video uploaded. Live in about a minute.', 'ok');
+      $('addVidFileForm').reset();
+      loadLists();
+    }).catch(function (err) { status(err.message, 'err'); })
+      .finally(function () { btn.disabled = false; });
+  });
+
+  /* ================= EDIT / DELETE VIDEO ================= */
+  $('vidList').addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-cancel-edit')) { closeEditSlots($('vidList')); return; }
+
+    var di = t.getAttribute('data-del-vid');
+    if (di !== null) {
+      if (!confirm('Delete this video?')) return;
+      status('Deleting video…', 'busy');
+      readJsonFile('data/videos.json').then(function (f) {
+        var removed = f.data.splice(Number(di), 1)[0];
+        return writeJsonFile('data/videos.json', f.data, 'Delete video: ' + (removed ? removed.title : ''), f.sha)
+          .then(function () {
+            var chain = Promise.resolve();
+            ['src', 'thumb'].forEach(function (k) {
+              var p = removed && removed[k];
+              if (p && !/^https?:/i.test(p)) {
+                chain = chain.then(function () { return ghDelete(p, 'Remove file for deleted video'); });
+              }
+            });
+            return chain;
+          });
+      }).then(function () { status('Video deleted.', 'ok'); loadLists(); })
+        .catch(function (err) { status(err.message, 'err'); });
+      return;
+    }
+
+    var ei = t.getAttribute('data-edit-vid');
+    if (ei !== null) {
+      closeEditSlots($('vidList'));
+      var v = cache.videos[Number(ei)];
+      if (!v) return;
+      t.closest('li').querySelector('.edit-slot').innerHTML =
+        '<div class="edit-form">' +
+        '<div class="field"><label>Title</label><input type="text" class="ef-title" value="' + esc(v.title) + '"></div>' +
+        (v.type === 'embed'
+          ? '<div class="field"><label>URL</label><input type="url" class="ef-url" value="' + esc(v.url) + '">' +
+            '<div class="hint">If you change the URL, the thumbnail refreshes automatically.</div></div>'
+          : '') +
+        '<button class="btn primary" data-save-vid="' + ei + '">Save changes</button> ' +
+        '<button class="btn" data-cancel-edit>Cancel</button>' +
+        '</div>';
+      return;
+    }
+
+    var si = t.getAttribute('data-save-vid');
+    if (si === null) return;
+    var v0 = cache.videos[Number(si)];
+    if (!v0) return;
+    var form = t.closest('.edit-form');
+    var title = form.querySelector('.ef-title').value.trim();
+    var urlEl = form.querySelector('.ef-url');
+    var url = urlEl ? urlEl.value.trim() : '';
+    if (!title || (urlEl && !url)) { status('Title' + (urlEl ? ' and URL' : '') + ' can’t be empty.', 'err'); return; }
+    t.disabled = true;
+    status('Saving changes…', 'busy');
+    var lookup = (urlEl && url !== v0.url) ? fetchOembed(url) : Promise.resolve(undefined);
+    lookup.then(function (info) {
+      return readJsonFile('data/videos.json').then(function (f) {
+        var v2 = f.data[Number(si)];
+        if (!v2) throw new Error('Video not found — reload and try again.');
+        v2.title = title;
+        if (urlEl) {
+          v2.url = url;
+          if (info !== undefined) {
+            var yt = ytIdOf(url);
+            v2.thumb = (info && info.thumbnail_url) || (yt ? 'https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg' : '');
+          }
+        }
+        return writeJsonFile('data/videos.json', f.data, 'Edit video: ' + title, f.sha);
+      });
+    }).then(function () { status('Video updated. Live in about a minute.', 'ok'); loadLists(); })
+      .catch(function (err) { status(err.message, 'err'); t.disabled = false; });
+  });
+
   /* ================= ADD PROJECT ================= */
   $('projImages').addEventListener('change', function () {
     var prev = $('projPreview');
@@ -549,6 +756,7 @@
     e.preventDefault();
     var files = Array.from($('projImages').files);
     if (!files.length) { status('Choose at least one image or PDF.', 'err'); return; }
+    if (tooBig($('projExtra').files[0])) return;
     var btn = $('addProjBtn'); btn.disabled = true;
 
     var title = $('projTitle').value.trim();

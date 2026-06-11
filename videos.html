@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="author" content="Harper Shaw">
-    <meta name="description" content="Art projects by Harper Shaw">
-    <title>Projects — Your Hired Gun</title>
+    <meta name="description" content="Videos by Harper Shaw">
+    <title>Videos — Your Hired Gun</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
@@ -19,15 +19,15 @@
         <a class="brand" href="index.html">Your Hired Gun</a>
         <div class="links">
             <a href="about.html">Art Links</a>
-            <a href="projects.html" class="active">Projects</a>
-            <a href="videos.html">Videos</a>
+            <a href="projects.html">Projects</a>
+            <a href="videos.html" class="active">Videos</a>
         </div>
     </nav>
 
-    <h1 class="page-title">Projects</h1>
-    <p class="page-sub">Things I made. Hover a card for color; click to see every page.</p>
+    <h1 class="page-title">Videos</h1>
+    <p class="page-sub">Moving pictures. Click a card to watch.</p>
 
-    <div id="projects" class="project-grid"></div>
+    <div id="videos" class="video-grid"><p class="empty-note">Loading&hellip;</p></div>
 
     <footer class="site-footer">
         <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
@@ -36,8 +36,10 @@
 
 </div>
 
+<div class="lightbox" id="lightbox"></div>
+
 <script src="js/main.js"></script>
-<script>YHG.renderProjects(document.getElementById('projects'));</script>
+<script>YHG.renderVideos(document.getElementById('videos'));</script>
 <script data-goatcounter="https://oingoboingo.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

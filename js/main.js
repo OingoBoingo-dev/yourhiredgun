@@ -78,6 +78,73 @@ var YHG = (function () {
     });
   }
 
+  /* ---------- Videos grid ---------- */
+  // returns an embeddable player URL for known platforms, or null
+  function videoEmbedUrl(url) {
+    var m = String(url || '').match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+    if (m) return 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1';
+    m = String(url || '').match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    if (m) return 'https://player.vimeo.com/video/' + m[1] + '?autoplay=1';
+    return null;
+  }
+
+  function closeVideoLightbox(lb) {
+    lb.classList.remove('open');
+    lb.innerHTML = ''; // removing the iframe/video stops playback
+  }
+
+  function renderVideos(el) {
+    getJSON('data/videos.json').then(function (videos) {
+      if (!videos.length) {
+        el.innerHTML = '<p class="empty-note">No videos yet &mdash; check back soon.</p>';
+        return;
+      }
+      var html = '';
+      videos.slice().reverse().forEach(function (v) {
+        var isFile = v.type === 'file';
+        var embed = isFile ? null : videoEmbedUrl(v.url);
+        var href = isFile ? v.src : v.url;
+        var host = isFile ? 'video' : hostOf(v.url);
+        html += '<a class="video-card" href="' + esc(href) + '"' +
+          (!isFile && !embed ? ' target="_blank" rel="noopener"' : '') +
+          ' data-embed="' + esc(embed || '') + '" data-file="' + (isFile ? esc(v.src) : '') + '">' +
+          '<div class="vthumb">' +
+          (v.thumb ? '<img src="' + esc(v.thumb) + '" alt="' + esc(v.title) + '" loading="lazy">' : '') +
+          '<span class="play-badge">&#9654;</span></div>' +
+          '<div class="meta"><h3>' + esc(v.title) + '</h3>' +
+          (v.date ? '<div class="date">' + esc(v.date) + '</div>' : '') +
+          '<div class="count">' + esc(host) + '</div></div></a>';
+      });
+      el.innerHTML = html;
+
+      var lb = document.getElementById('lightbox');
+      el.querySelectorAll('.video-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          var file = card.getAttribute('data-file');
+          var embed = card.getAttribute('data-embed');
+          if (!file && !embed) return; // unknown platform: follow the link in a new tab
+          e.preventDefault();
+          if (!lb) return;
+          lb.innerHTML = '<div class="video-shell">' + (file
+            ? '<video controls autoplay playsinline src="' + esc(file) + '"></video>'
+            : '<iframe src="' + esc(embed) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>') +
+            '</div>';
+          lb.classList.add('open');
+        });
+      });
+      if (lb) {
+        lb.addEventListener('click', function (e) {
+          if (e.target === lb) closeVideoLightbox(lb);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') closeVideoLightbox(lb);
+        });
+      }
+    }).catch(function () {
+      el.innerHTML = '<p class="empty-note">Could not load videos.</p>';
+    });
+  }
+
   /* ---------- Single project page ---------- */
   function renderProject(titleEl, descEl, stackEl) {
     var id = new URLSearchParams(location.search).get('id');
@@ -130,5 +197,5 @@ var YHG = (function () {
     }
   }
 
-  return { renderLinks: renderLinks, renderProjects: renderProjects, renderProject: renderProject };
+  return { renderLinks: renderLinks, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos };
 })();
