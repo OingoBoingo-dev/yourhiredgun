@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Harper Shaw">
+    <title>Project — Your Hired Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="Profile Photo.png" type="image/png">
+</head>
+<body>
+<div class="page">
+
+    <nav class="site-nav">
+        <a class="brand" href="index.html">Your Hired Gun</a>
+        <div class="links">
+            <a href="about.html">Art Links</a>
+            <a href="projects.html" class="active">Projects</a>
+        </div>
+    </nav>
+
+    <h1 class="page-title" id="pTitle">&hellip;</h1>
+    <p class="project-desc" id="pDesc"></p>
+
+    <p class="zoom-hint">Hover to zoom &middot; click for full screen</p>
+    <div id="pStack" class="image-stack"></div>
+
+    <footer class="site-footer">
+        <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
+        <a href="projects.html">All projects</a>
+    </footer>
+
+</div>
+
+<div class="lightbox" id="lightbox"><img alt=""></div>
+
+<script src="js/main.js"></script>
+<script>
+YHG.renderProject(
+    document.getElementById('pTitle'),
+    document.getElementById('pDesc'),
+    document.getElementById('pStack')
+);
+</script>
+<script data-goatcounter="https://yourhiredgun.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

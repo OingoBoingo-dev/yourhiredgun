@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Harper Shaw">
+    <meta name="description" content="Art projects by Harper Shaw">
+    <title>Projects — Your Hired Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="Profile Photo.png" type="image/png">
+</head>
+<body>
+<div class="page">
+
+    <nav class="site-nav">
+        <a class="brand" href="index.html">Your Hired Gun</a>
+        <div class="links">
+            <a href="about.html">Art Links</a>
+            <a href="projects.html" class="active">Projects</a>
+        </div>
+    </nav>
+
+    <h1 class="page-title">Projects</h1>
+    <p class="page-sub">Things I made. Hover a card for color; click to see every page.</p>
+
+    <div id="projects" class="project-grid"></div>
+
+    <footer class="site-footer">
+        <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
+        <a href="index.html">Back to home</a>
+    </footer>
+
+</div>
+
+<script src="js/main.js"></script>
+<script>YHG.renderProjects(document.getElementById('projects'));</script>
+<script data-goatcounter="https://yourhiredgun.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

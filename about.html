@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Harper Shaw">
+    <meta name="description" content="Art links — a running collection of art worth seeing">
+    <title>Art Links — Your Hired Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="Profile Photo.png" type="image/png">
+</head>
+<body>
+<div class="page">
+
+    <nav class="site-nav">
+        <a class="brand" href="index.html">Your Hired Gun</a>
+        <div class="links">
+            <a href="about.html" class="active">Art Links</a>
+            <a href="projects.html">Projects</a>
+        </div>
+    </nav>
+
+    <h1 class="page-title">Art Links</h1>
+    <p class="page-sub">A running collection of art worth seeing.
+       Found something good? Send it to <a href="mailto:info@yourhiredgun.com">info@yourhiredgun.com</a>.</p>
+
+    <div id="links"><p class="empty-note">Loading&hellip;</p></div>
+
+    <footer class="site-footer">
+        <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
+        <a href="index.html">Back to home</a>
+    </footer>
+
+</div>
+
+<script src="js/main.js"></script>
+<script>YHG.renderLinks(document.getElementById('links'));</script>
+<script data-goatcounter="https://yourhiredgun.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

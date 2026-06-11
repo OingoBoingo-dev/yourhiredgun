@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Admin — Your Hired Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="Profile Photo.png" type="image/png">
+</head>
+<body>
+<div class="page">
+
+    <nav class="site-nav">
+        <a class="brand" href="index.html">Your Hired Gun</a>
+        <div class="links">
+            <a href="about.html">Art Links</a>
+            <a href="projects.html">Projects</a>
+        </div>
+    </nav>
+
+    <div class="status-msg" id="statusMsg"></div>
+
+    <!-- ============ LOGIN ============ -->
+    <div id="loginView" class="admin-box">
+        <h1 class="page-title">Admin</h1>
+        <p class="page-sub">Owner access only.</p>
+
+        <form id="loginForm">
+            <div class="field">
+                <label for="pw">Password</label>
+                <input type="password" id="pw" autocomplete="current-password" required>
+            </div>
+
+            <h2 class="section-h">GitHub connection</h2>
+            <div class="field">
+                <label for="ghOwner">GitHub username</label>
+                <input type="text" id="ghOwner" placeholder="e.g. harpershaw">
+            </div>
+            <div class="field">
+                <label for="ghRepo">Repository name</label>
+                <input type="text" id="ghRepo" placeholder="e.g. yourhiredgun">
+            </div>
+            <div class="field">
+                <label for="ghBranch">Branch</label>
+                <input type="text" id="ghBranch" value="main">
+            </div>
+            <div class="field">
+                <label for="ghToken">GitHub token</label>
+                <input type="password" id="ghToken" autocomplete="off">
+                <div class="hint">Fine-grained personal access token with Contents read/write on this repo — see SETUP.md for the 2-minute walkthrough. This token, not the password, is what protects the site.</div>
+            </div>
+            <div class="field">
+                <label><input type="checkbox" id="rememberToken"> Remember token on this browser (only on your own computer)</label>
+            </div>
+
+            <button class="btn primary" type="submit">Enter</button>
+        </form>
+    </div>
+
+    <!-- ============ PANEL ============ -->
+    <div id="panelView" style="display:none">
+        <h1 class="page-title">Site Manager</h1>
+        <p class="page-sub">Changes commit straight to GitHub and go live after the automatic rebuild (~1 minute).</p>
+
+        <div class="admin-tabs">
+            <button class="active" data-tab="tabLinks">Art Links</button>
+            <button data-tab="tabProjects">Projects</button>
+            <button data-tab="tabTraffic">Traffic</button>
+        </div>
+
+        <!-- ---- LINKS ---- -->
+        <section id="tabLinks" class="admin-section active">
+            <h2 class="section-h">Add a link</h2>
+            <form id="addLinkForm">
+                <div class="field">
+                    <label for="linkTitle">Title</label>
+                    <input type="text" id="linkTitle" required>
+                </div>
+                <div class="field">
+                    <label for="linkUrl">URL</label>
+                    <input type="url" id="linkUrl" placeholder="https://…" required>
+                </div>
+                <div class="field">
+                    <label for="linkNote">Note (optional)</label>
+                    <input type="text" id="linkNote">
+                </div>
+                <button class="btn primary" type="submit" id="addLinkBtn">Save link</button>
+            </form>
+
+            <hr class="divider">
+            <h2 class="section-h">Existing links</h2>
+            <ul class="admin-list" id="linkList"></ul>
+        </section>
+
+        <!-- ---- PROJECTS ---- -->
+        <section id="tabProjects" class="admin-section">
+            <h2 class="section-h">Add a project</h2>
+            <form id="addProjForm">
+                <div class="field">
+                    <label for="projTitle">Title</label>
+                    <input type="text" id="projTitle" placeholder="e.g. CD Booklet — 6 pages" required>
+                </div>
+                <div class="field">
+                    <label for="projDesc">Description (optional)</label>
+                    <textarea id="projDesc"></textarea>
+                </div>
+                <div class="field">
+                    <label for="projImages">Images (select all pages at once)</label>
+                    <input type="file" id="projImages" accept="image/*" multiple required>
+                    <div class="hint">Big images are automatically resized before upload. Order follows your selection.</div>
+                    <div class="thumb-preview" id="projPreview"></div>
+                </div>
+                <button class="btn primary" type="submit" id="addProjBtn">Upload project</button>
+            </form>
+
+            <hr class="divider">
+            <h2 class="section-h">Existing projects</h2>
+            <ul class="admin-list" id="projList"></ul>
+        </section>
+
+        <!-- ---- TRAFFIC ---- -->
+        <section id="tabTraffic" class="admin-section">
+            <h2 class="section-h">Traffic</h2>
+            <p>Visitor stats live on your GoatCounter dashboard:</p>
+            <p><a href="https://yourhiredgun.goatcounter.com" target="_blank" rel="noopener" class="btn">Open dashboard &nearr;</a></p>
+            <p class="hint" style="color:var(--paper-dim); font-size:13px">Shows visits, page views, referrers, countries and devices. See SETUP.md if you haven't created the (free) account yet.</p>
+        </section>
+
+        <hr class="divider">
+        <button class="btn" id="logoutBtn">Log out</button>
+    </div>
+
+    <footer class="site-footer">
+        <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
+        <a href="index.html">Back to home</a>
+    </footer>
+
+</div>
+
+<script src="js/admin.js"></script>
+</body>
+</html>

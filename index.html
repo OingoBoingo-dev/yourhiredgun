@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Harper Shaw">
+    <meta name="description" content="Your Hired Gun — a collection of things I enjoy">
+    <title>Your Hired Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="Profile Photo.png" type="image/png">
+</head>
+<body class="landing">
+
+    <!-- full-color painting (revealed through the spotlight) -->
+    <div class="bg-layer bg-color" aria-hidden="true"></div>
+    <!-- grayscale layer with a hole punched at the cursor -->
+    <div class="bg-layer bg-gray" id="grayLayer" aria-hidden="true"></div>
+    <div class="bg-vignette" aria-hidden="true"></div>
+
+    <main class="landing-content">
+        <h1>Your Hired&nbsp;Gun</h1>
+        <p class="tagline">A collection of things I enjoy</p>
+        <nav class="landing-nav">
+            <a href="about.html">Art Links</a>
+            <a href="projects.html">Projects</a>
+        </nav>
+    </main>
+
+    <footer class="landing-credit">
+        <span>&copy; Harper Shaw 2026 &mdash; <em>The Wandering Traveller</em></span>
+        &nbsp;&middot;&nbsp;
+        <a href="admin.html" title="Admin">&#9670;</a>
+    </footer>
+
+    <script>
+    (function () {
+        var layer = document.getElementById('grayLayer');
+        var tx = window.innerWidth / 2, ty = window.innerHeight / 2;
+        var x = tx, y = ty;
+        var hasMouse = window.matchMedia('(pointer: fine)').matches;
+        var t = 0;
+
+        document.addEventListener('mousemove', function (e) {
+            tx = e.clientX; ty = e.clientY; hasMouse = true;
+        });
+        document.addEventListener('touchmove', function (e) {
+            if (e.touches.length) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }
+        }, { passive: true });
+
+        function frame() {
+            if (!hasMouse) {
+                // no pointer (phones/tablets): the spotlight slowly wanders the painting
+                t += 0.004;
+                tx = window.innerWidth  * (0.5 + 0.38 * Math.sin(t));
+                ty = window.innerHeight * (0.5 + 0.30 * Math.sin(t * 0.7 + 1.3));
+            }
+            x += (tx - x) * 0.12;
+            y += (ty - y) * 0.12;
+            layer.style.setProperty('--mx', x + 'px');
+            layer.style.setProperty('--my', y + 'px');
+            layer.style.setProperty('--r', Math.max(180, window.innerWidth * 0.13) + 'px');
+            requestAnimationFrame(frame);
+        }
+        frame();
+    })();
+    </script>
+
+    <!-- GoatCounter analytics — see SETUP.md -->
+    <script data-goatcounter="https://yourhiredgun.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>
