@@ -376,13 +376,22 @@ body.videos .bg-layer {
   background-position: center;
 }
 
+/* the color layer gets a boost so the spotlight really pops
+   against the darkened gray layer */
+body.videos .bg-color {
+  filter: saturate(1.9) brightness(1.35) contrast(1.05);
+}
+body.videos .bg-gray {
+  filter: grayscale(1) contrast(1.05) brightness(0.55);
+}
+
 /* dark wash so the cards stay readable over the artwork */
 .bg-dim {
   position: fixed;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  background: rgba(19, 17, 20, 0.78);
+  background: rgba(19, 17, 20, 0.5);
 }
 
 body.videos .page {
