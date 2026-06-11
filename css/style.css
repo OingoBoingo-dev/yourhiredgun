@@ -369,6 +369,27 @@ a:hover { color: var(--ember); }
    VIDEOS
    ============================================================ */
 
+/* ----- background spotlight (same treatment as the landing page) ----- */
+
+body.videos .bg-layer {
+  background-image: url("../assets/videos-bg.jpg");
+  background-position: center;
+}
+
+/* dark wash so the cards stay readable over the artwork */
+.bg-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: rgba(19, 17, 20, 0.78);
+}
+
+body.videos .page {
+  position: relative;
+  z-index: 3;
+}
+
 .video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
