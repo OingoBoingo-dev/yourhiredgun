@@ -93,6 +93,13 @@
     });
   }
 
+  // create or replace a file regardless of whether it already exists
+  function ghPutAuto(path, contentB64, message) {
+    return ghGet(path).then(function (f) {
+      return ghPut(path, contentB64, message, f && f.sha);
+    });
+  }
+
   function ghDelete(path, message) {
     return ghGet(path).then(function (f) {
       if (!f) return null;
@@ -140,6 +147,71 @@
       };
       img.onerror = reject;
       img.src = url;
+    });
+  }
+
+  // read any file as base64, untouched (used for the interactive HTML page)
+  function fileToB64Raw(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onload = function () { resolve(fr.result.split(',')[1]); };
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  /* ---------------- PDF helpers ---------------- */
+  // PDFs are split into one JPEG per page, in the browser, before upload.
+  var PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+
+  function isPdf(file) {
+    return file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  }
+
+  function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = PDFJS_CDN + 'pdf.min.js';
+      s.onload = function () {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_CDN + 'pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = function () { reject(new Error('Could not load the PDF reader — check your connection and try again.')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // file (PDF) -> [{ b64, ext:'jpg' }], one per page
+  function pdfToImages(file, onPage) {
+    return loadPdfJs().then(function (pdfjsLib) {
+      return file.arrayBuffer().then(function (buf) {
+        return pdfjsLib.getDocument({ data: buf }).promise;
+      });
+    }).then(function (pdf) {
+      var out = [];
+      var chain = Promise.resolve();
+      for (var n = 1; n <= pdf.numPages; n++) {
+        (function (n) {
+          chain = chain.then(function () {
+            if (onPage) onPage(n, pdf.numPages);
+            return pdf.getPage(n).then(function (page) {
+              var vp1 = page.getViewport({ scale: 1 });
+              // aim for ~1800px on the long side; cap upscaling at 3x
+              var scale = Math.min(3, 1800 / Math.max(vp1.width, vp1.height));
+              var vp = page.getViewport({ scale: scale });
+              var cv = document.createElement('canvas');
+              cv.width = Math.round(vp.width);
+              cv.height = Math.round(vp.height);
+              return page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise.then(function () {
+                out.push({ b64: cv.toDataURL('image/jpeg', 0.86).split(',')[1], ext: 'jpg' });
+                cv.width = cv.height = 0; // free memory
+              });
+            });
+          });
+        })(n);
+      }
+      return chain.then(function () { return out; });
     });
   }
 
@@ -216,25 +288,40 @@
   });
 
   /* ================= LISTS ================= */
+  var cache = { links: [], projects: [] };
+
   function loadLists() {
     readJsonFile('data/links.json').then(function (f) {
+      cache.links = f.data;
       var html = '';
       f.data.forEach(function (l, i) {
-        html += '<li><span class="item-title">' + esc(l.title) +
+        html += '<li><div class="item-row"><span class="item-title">' + esc(l.title) +
           ' <span class="item-sub">' + esc(l.date || '') + '</span></span>' +
-          '<button class="btn danger" data-del-link="' + i + '">Delete</button></li>';
+          '<span class="item-btns">' +
+          '<button class="btn mini" data-edit-link="' + i + '">Edit</button>' +
+          '<button class="btn danger" data-del-link="' + i + '">Delete</button>' +
+          '</span></div><div class="edit-slot"></div></li>';
       });
       $('linkList').innerHTML = html || '<li><span class="item-sub">No links yet.</span></li>';
     });
     readJsonFile('data/projects.json').then(function (f) {
+      cache.projects = f.data;
       var html = '';
       f.data.forEach(function (p, i) {
-        html += '<li><span class="item-title">' + esc(p.title) +
-          ' <span class="item-sub">' + (p.images || []).length + ' images</span></span>' +
-          '<button class="btn danger" data-del-proj="' + i + '">Delete</button></li>';
+        html += '<li><div class="item-row"><span class="item-title">' + esc(p.title) +
+          ' <span class="item-sub">' + (p.images || []).length + ' images' +
+          (p.interactive ? ' · interactive' : '') + '</span></span>' +
+          '<span class="item-btns">' +
+          '<button class="btn mini" data-edit-proj="' + i + '">Edit</button>' +
+          '<button class="btn danger" data-del-proj="' + i + '">Delete</button>' +
+          '</span></div><div class="edit-slot"></div></li>';
       });
       $('projList').innerHTML = html || '<li><span class="item-sub">No projects yet.</span></li>';
     });
+  }
+
+  function closeEditSlots(listEl) {
+    listEl.querySelectorAll('.edit-slot').forEach(function (s) { s.innerHTML = ''; });
   }
 
   /* ================= ADD LINK ================= */
@@ -271,11 +358,187 @@
       .catch(function (err) { status(err.message, 'err'); });
   });
 
+  /* ================= EDIT LINK ================= */
+  $('linkList').addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-cancel-edit')) { closeEditSlots($('linkList')); return; }
+
+    var ei = t.getAttribute('data-edit-link');
+    if (ei !== null) {
+      closeEditSlots($('linkList'));
+      var l = cache.links[Number(ei)];
+      if (!l) return;
+      t.closest('li').querySelector('.edit-slot').innerHTML =
+        '<div class="edit-form">' +
+        '<div class="field"><label>Title</label><input type="text" class="ef-title" value="' + esc(l.title) + '"></div>' +
+        '<div class="field"><label>URL</label><input type="url" class="ef-url" value="' + esc(l.url) + '"></div>' +
+        '<div class="field"><label>Note</label><input type="text" class="ef-note" value="' + esc(l.note || '') + '"></div>' +
+        '<button class="btn primary" data-save-link="' + ei + '">Save changes</button> ' +
+        '<button class="btn" data-cancel-edit>Cancel</button>' +
+        '</div>';
+      return;
+    }
+
+    var si = t.getAttribute('data-save-link');
+    if (si === null) return;
+    var form = t.closest('.edit-form');
+    var title = form.querySelector('.ef-title').value.trim();
+    var url = form.querySelector('.ef-url').value.trim();
+    var note = form.querySelector('.ef-note').value.trim();
+    if (!title || !url) { status('Title and URL can’t be empty.', 'err'); return; }
+    t.disabled = true;
+    status('Saving changes…', 'busy');
+    readJsonFile('data/links.json').then(function (f) {
+      var l2 = f.data[Number(si)];
+      if (!l2) throw new Error('Link not found — reload and try again.');
+      l2.title = title; l2.url = url; l2.note = note;
+      return writeJsonFile('data/links.json', f.data, 'Edit link: ' + title, f.sha);
+    }).then(function () { status('Link updated. Live in about a minute.', 'ok'); loadLists(); })
+      .catch(function (err) { status(err.message, 'err'); t.disabled = false; });
+  });
+
+  /* ================= EDIT PROJECT ================= */
+  $('projList').addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-cancel-edit')) { closeEditSlots($('projList')); return; }
+
+    // toggle an image's "remove" mark
+    if (t.getAttribute('data-rm-img') !== null) {
+      t.parentElement.classList.toggle('rm');
+      return;
+    }
+
+    var ei = t.getAttribute('data-edit-proj');
+    if (ei !== null) {
+      closeEditSlots($('projList'));
+      var p = cache.projects[Number(ei)];
+      if (!p) return;
+      var thumbs = (p.images || []).map(function (path) {
+        return '<span class="edit-thumb"><img src="' + esc(path) + '" alt="">' +
+          '<button type="button" data-rm-img="' + esc(path) + '" title="Mark for removal">&times;</button></span>';
+      }).join('');
+      t.closest('li').querySelector('.edit-slot').innerHTML =
+        '<div class="edit-form">' +
+        '<div class="field"><label>Title</label><input type="text" class="ef-title" value="' + esc(p.title) + '"></div>' +
+        '<div class="field"><label>Description</label><textarea class="ef-desc">' + esc(p.description || '') + '</textarea></div>' +
+        '<div class="field"><label>Images (click &times; to mark for removal)</label>' +
+        '<div class="edit-imgs">' + thumbs + '</div></div>' +
+        '<div class="field"><label>Add images or a PDF</label>' +
+        '<input type="file" class="ef-add" accept="image/*,application/pdf,.pdf" multiple></div>' +
+        '<div class="field"><label>Interactive page</label>' +
+        (p.interactive
+          ? '<div class="hint">Currently attached. Upload a new file to replace it, or tick <label style="display:inline"><input type="checkbox" class="ef-rm-int"> remove</label>.</div>'
+          : '<div class="hint">None yet — upload a self-contained HTML file to add one.</div>') +
+        '<input type="file" class="ef-int" accept=".html,.htm,text/html"></div>' +
+        '<button class="btn primary" data-save-proj="' + ei + '">Save changes</button> ' +
+        '<button class="btn" data-cancel-edit>Cancel</button>' +
+        '</div>';
+      return;
+    }
+
+    var si = t.getAttribute('data-save-proj');
+    if (si === null) return;
+    var p0 = cache.projects[Number(si)];
+    if (!p0) return;
+    var form = t.closest('.edit-form');
+    var title = form.querySelector('.ef-title').value.trim();
+    var desc = form.querySelector('.ef-desc').value.trim();
+    var rmPaths = Array.from(form.querySelectorAll('.edit-thumb.rm button')).map(function (b) {
+      return b.getAttribute('data-rm-img');
+    });
+    var addFiles = Array.from(form.querySelector('.ef-add').files);
+    var intFile = form.querySelector('.ef-int').files[0];
+    var rmIntEl = form.querySelector('.ef-rm-int');
+    var rmInt = rmIntEl ? rmIntEl.checked : false;
+    if (!title) { status('Title can’t be empty.', 'err'); return; }
+    t.disabled = true;
+
+    // convert any new files (PDFs expand to one image per page)
+    var items = [];
+    var prep = Promise.resolve();
+    addFiles.forEach(function (file) {
+      prep = prep.then(function () {
+        if (isPdf(file)) {
+          status('Reading PDF…', 'busy');
+          return pdfToImages(file, function (n, total) {
+            status('Converting PDF page ' + n + ' of ' + total + '…', 'busy');
+          }).then(function (pages) { pages.forEach(function (x) { items.push(x); }); });
+        }
+        return fileToB64(file).then(function (r) { items.push(r); });
+      });
+    });
+
+    var newPaths = [];
+    prep.then(function () {
+      if ((p0.images || []).length - rmPaths.length + items.length < 1) {
+        throw new Error('A project needs at least one image.');
+      }
+      // continue numbering after the highest existing image
+      var maxN = 0;
+      (p0.images || []).forEach(function (path) {
+        var m = path.match(/(\d+)\.\w+$/);
+        if (m) maxN = Math.max(maxN, Number(m[1]));
+      });
+      var chain = Promise.resolve();
+      items.forEach(function (it, i) {
+        chain = chain.then(function () {
+          status('Uploading image ' + (i + 1) + ' of ' + items.length + '…', 'busy');
+          var path = 'images/projects/' + p0.id + '/' + String(maxN + i + 1).padStart(2, '0') + '.' + it.ext;
+          newPaths.push(path);
+          return ghPut(path, it.b64, 'Add image to project: ' + title);
+        });
+      });
+      return chain;
+    }).then(function () {
+      if (!intFile) return null;
+      status('Uploading interactive page…', 'busy');
+      return fileToB64Raw(intFile).then(function (b64) {
+        var path = 'images/projects/' + p0.id + '/interactive.html';
+        return ghPutAuto(path, b64, 'Update interactive page: ' + title).then(function () { return path; });
+      });
+    }).then(function (intPath) {
+      // delete images marked for removal (and the interactive page if requested)
+      var chain = Promise.resolve();
+      rmPaths.forEach(function (path) {
+        chain = chain.then(function () {
+          status('Removing image…', 'busy');
+          return ghDelete(path, 'Remove image from project: ' + title);
+        });
+      });
+      if (rmInt && !intFile && p0.interactive) {
+        chain = chain.then(function () { return ghDelete(p0.interactive, 'Remove interactive page: ' + title); });
+      }
+      return chain.then(function () { return intPath; });
+    }).then(function (intPath) {
+      status('Saving project…', 'busy');
+      return readJsonFile('data/projects.json').then(function (f) {
+        var p2 = f.data.find(function (x) { return x.id === p0.id; });
+        if (!p2) throw new Error('Project not found — reload and try again.');
+        p2.title = title;
+        p2.description = desc;
+        p2.images = (p2.images || []).filter(function (x) { return rmPaths.indexOf(x) === -1; }).concat(newPaths);
+        if (intPath) p2.interactive = intPath;
+        else if (rmInt) delete p2.interactive;
+        return writeJsonFile('data/projects.json', f.data, 'Edit project: ' + title, f.sha);
+      });
+    }).then(function () {
+      status('Project updated. Live in about a minute.', 'ok');
+      loadLists();
+    }).catch(function (err) { status(err.message, 'err'); t.disabled = false; });
+  });
+
   /* ================= ADD PROJECT ================= */
   $('projImages').addEventListener('change', function () {
     var prev = $('projPreview');
     prev.innerHTML = '';
     Array.from($('projImages').files).forEach(function (file) {
+      if (isPdf(file)) {
+        var chip = document.createElement('span');
+        chip.className = 'pdf-chip';
+        chip.textContent = 'PDF · ' + file.name + ' (pages will be split automatically)';
+        prev.appendChild(chip);
+        return;
+      }
       var img = document.createElement('img');
       img.src = URL.createObjectURL(file);
       prev.appendChild(img);
@@ -285,35 +548,63 @@
   $('addProjForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var files = Array.from($('projImages').files);
-    if (!files.length) { status('Choose at least one image.', 'err'); return; }
+    if (!files.length) { status('Choose at least one image or PDF.', 'err'); return; }
     var btn = $('addProjBtn'); btn.disabled = true;
 
     var title = $('projTitle').value.trim();
     var slug = slugify(title) + '-' + Date.now().toString(36);
-    var paths = [];
-    var chain = Promise.resolve();
 
-    files.forEach(function (file, i) {
-      chain = chain.then(function () {
-        status('Uploading image ' + (i + 1) + ' of ' + files.length + '…', 'busy');
-        return fileToB64(file).then(function (r) {
-          var path = 'images/projects/' + slug + '/' + String(i + 1).padStart(2, '0') + '.' + r.ext;
-          paths.push(path);
-          return ghPut(path, r.b64, 'Add project image: ' + title);
-        });
+    // 1) turn every selected file into one or more images (PDFs expand to one per page)
+    var items = []; // { b64, ext }
+    var prep = Promise.resolve();
+    files.forEach(function (file) {
+      prep = prep.then(function () {
+        if (isPdf(file)) {
+          status('Reading PDF…', 'busy');
+          return pdfToImages(file, function (n, total) {
+            status('Converting PDF page ' + n + ' of ' + total + '…', 'busy');
+          }).then(function (pages) {
+            pages.forEach(function (p) { items.push(p); });
+          });
+        }
+        return fileToB64(file).then(function (r) { items.push(r); });
       });
     });
 
-    chain.then(function () {
+    // 2) upload the images
+    var paths = [];
+    prep.then(function () {
+      var chain = Promise.resolve();
+      items.forEach(function (it, i) {
+        chain = chain.then(function () {
+          status('Uploading image ' + (i + 1) + ' of ' + items.length + '…', 'busy');
+          var path = 'images/projects/' + slug + '/' + String(i + 1).padStart(2, '0') + '.' + it.ext;
+          paths.push(path);
+          return ghPut(path, it.b64, 'Add project image: ' + title);
+        });
+      });
+      return chain;
+    }).then(function () {
+      // 3) optional interactive HTML page
+      var extra = $('projExtra').files[0];
+      if (!extra) return null;
+      status('Uploading interactive page…', 'busy');
+      return fileToB64Raw(extra).then(function (b64) {
+        var path = 'images/projects/' + slug + '/interactive.html';
+        return ghPut(path, b64, 'Add interactive page: ' + title).then(function () { return path; });
+      });
+    }).then(function (interactivePath) {
       status('Saving project…', 'busy');
       return readJsonFile('data/projects.json').then(function (f) {
-        f.data.push({
+        var rec = {
           id: slug,
           title: title,
           description: $('projDesc').value.trim(),
           date: today(),
           images: paths
-        });
+        };
+        if (interactivePath) rec.interactive = interactivePath;
+        f.data.push(rec);
         return writeJsonFile('data/projects.json', f.data, 'Add project: ' + title, f.sha);
       });
     }).then(function () {
@@ -339,6 +630,9 @@
           (removed.images || []).forEach(function (p) {
             chain = chain.then(function () { return ghDelete(p, 'Remove image for deleted project'); });
           });
+          if (removed.interactive) {
+            chain = chain.then(function () { return ghDelete(removed.interactive, 'Remove interactive page for deleted project'); });
+          }
           return chain;
         });
     }).then(function () { status('Project deleted.', 'ok'); loadLists(); })

@@ -68,7 +68,8 @@ var YHG = (function () {
           '<div class="thumb">' + (cover ? '<img src="' + esc(cover) + '" alt="' + esc(p.title) + '" loading="lazy">' : '') + '</div>' +
           '<div class="meta"><h3>' + esc(p.title) + '</h3>' +
           (p.date ? '<div class="date">' + esc(p.date) + '</div>' : '') +
-          '<div class="count">' + (p.images ? p.images.length : 0) + ' image' + ((p.images || []).length === 1 ? '' : 's') + '</div>' +
+          '<div class="count">' + (p.images ? p.images.length : 0) + ' image' + ((p.images || []).length === 1 ? '' : 's') +
+          (p.interactive ? ' &middot; interactive' : '') + '</div>' +
           '</div></a>';
       });
       el.innerHTML = html;
@@ -90,6 +91,11 @@ var YHG = (function () {
       document.title = p.title + ' — Your Hired Gun';
       titleEl.textContent = p.title;
       descEl.textContent = p.description || '';
+      if (p.interactive) {
+        descEl.insertAdjacentHTML('afterend',
+          '<p class="interactive-cta"><a class="btn" href="' + esc(p.interactive) +
+          '" target="_blank" rel="noopener">Open interactive version &nearr;</a></p>');
+      }
       var html = '';
       (p.images || []).forEach(function (src, i) {
         html += '<figure class="zoom-frame" data-full="' + esc(src) + '">' +

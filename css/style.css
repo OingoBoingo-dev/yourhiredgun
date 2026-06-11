@@ -505,16 +505,51 @@ a:hover { color: var(--ember); }
 
 .admin-list { list-style: none; padding: 0; margin: 0 0 40px; }
 .admin-list li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
   padding: 12px 4px;
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
+.admin-list .item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.admin-list .item-btns { display: flex; gap: 8px; flex-shrink: 0; }
 .admin-list li .item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-list li .item-sub { color: var(--paper-dim); font-size: 12px; }
+
+.btn.mini { padding: 6px 14px; font-size: 11px; }
+
+/* inline edit form inside list items */
+.edit-form {
+  margin: 16px 0 8px;
+  padding: 18px;
+  border: 1px dashed var(--line);
+}
+.edit-imgs { display: flex; gap: 12px; flex-wrap: wrap; }
+.edit-thumb { position: relative; display: inline-block; }
+.edit-thumb img {
+  width: 72px; height: 72px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  display: block;
+}
+.edit-thumb button {
+  position: absolute;
+  top: -9px; right: -9px;
+  width: 22px; height: 22px;
+  line-height: 1;
+  font-size: 14px;
+  font-family: var(--mono);
+  background: var(--ink);
+  color: #d96a6a;
+  border: 1px solid #a03030;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.edit-thumb.rm img { opacity: 0.25; outline: 2px solid #a03030; }
+.edit-thumb.rm button { background: #a03030; color: var(--paper); }
 
 .status-msg {
   margin: 20px 0;
@@ -544,6 +579,16 @@ h2.section-h {
   object-fit: cover;
   border: 1px solid var(--line);
 }
+.thumb-preview .pdf-chip {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  font-size: 12px;
+  color: var(--paper-dim);
+}
+
+/* "Open interactive version" button on project pages */
+.interactive-cta { margin: 18px 0 6px; }
 
 @media (max-width: 600px) {
   .site-nav .links { gap: 14px; }
