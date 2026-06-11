@@ -140,27 +140,43 @@ a:hover { color: var(--ember); }
   inset: 0;
   background-image: url("../assets/traveller.jpg");
   background-size: cover;
-  background-position: center;
+  /* favor the top of the painting so the figure over the hill stays visible */
+  background-position: center 18%;
 }
 
 .bg-color { z-index: 0; }
 
-.bg-gray {
+/* Three nested masks, each a soft circle drifting around the cursor
+   with its own rhythm — their union forms an irregular, morphing blob. */
+.mask-wrap {
+  position: fixed;
+  inset: 0;
   z-index: 1;
+}
+
+.m1 {
+  -webkit-mask-image: radial-gradient(circle var(--r1, 220px) at var(--x1, 50%) var(--y1, 50%),
+    transparent 0%, rgba(0, 0, 0, 0.4) 60%, black 100%);
+  mask-image: radial-gradient(circle var(--r1, 220px) at var(--x1, 50%) var(--y1, 50%),
+    transparent 0%, rgba(0, 0, 0, 0.4) 60%, black 100%);
+}
+.m2 {
+  -webkit-mask-image: radial-gradient(circle var(--r2, 220px) at var(--x2, 50%) var(--y2, 50%),
+    transparent 0%, rgba(0, 0, 0, 0.4) 60%, black 100%);
+  mask-image: radial-gradient(circle var(--r2, 220px) at var(--x2, 50%) var(--y2, 50%),
+    transparent 0%, rgba(0, 0, 0, 0.4) 60%, black 100%);
+}
+.m3 {
+  -webkit-mask-image: radial-gradient(circle var(--r3, 220px) at var(--x3, 50%) var(--y3, 50%),
+    transparent 0%, rgba(0, 0, 0, 0.4) 60%, black 100%);
+  mask-image: radial-gradient(circle var(--r3, 220px) at var(--x3, 50%) var(--y3, 50%),
+    transparent 0%, rgba(0, 0, 0, 0.4) 60%, black 100%);
+}
+
+.bg-gray {
+  position: absolute;
+  inset: 0;
   filter: grayscale(1) contrast(1.05) brightness(0.82);
-  /* hole punched at the cursor reveals the color layer beneath */
-  -webkit-mask-image: radial-gradient(
-    circle var(--r, 200px) at var(--mx, 50%) var(--my, 50%),
-    transparent 0%,
-    rgba(0, 0, 0, 0.35) 55%,
-    black 100%
-  );
-  mask-image: radial-gradient(
-    circle var(--r, 200px) at var(--mx, 50%) var(--my, 50%),
-    transparent 0%,
-    rgba(0, 0, 0, 0.35) 55%,
-    black 100%
-  );
 }
 
 .bg-vignette {
