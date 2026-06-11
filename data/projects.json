@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "id": "exmilitary-david-g-mq9rhjxd",
+    "title": "ExMilitary - David G.",
+    "description": "Happy Birthday Playboy",
+    "date": "06/11/26",
+    "images": [
+      "images/projects/exmilitary-david-g-mq9rhjxd/01.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/02.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/03.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/04.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/05.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/06.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/07.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/08.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/09.jpg",
+      "images/projects/exmilitary-david-g-mq9rhjxd/10.jpg"
+    ],
+    "interactive": "images/projects/exmilitary-david-g-mq9rhjxd/interactive.html"
+  }
+]
