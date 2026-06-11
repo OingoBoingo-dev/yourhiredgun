@@ -109,10 +109,15 @@
                     <textarea id="projDesc"></textarea>
                 </div>
                 <div class="field">
-                    <label for="projImages">Images (select all pages at once)</label>
-                    <input type="file" id="projImages" accept="image/*" multiple required>
-                    <div class="hint">Big images are automatically resized before upload. Order follows your selection.</div>
+                    <label for="projImages">Images or a PDF (select all pages at once)</label>
+                    <input type="file" id="projImages" accept="image/*,application/pdf,.pdf" multiple required>
+                    <div class="hint">PDFs are split into one image per page, right in your browser. Big images are automatically resized before upload. Order follows your selection.</div>
                     <div class="thumb-preview" id="projPreview"></div>
+                </div>
+                <div class="field">
+                    <label for="projExtra">Interactive page (optional)</label>
+                    <input type="file" id="projExtra" accept=".html,.htm,text/html">
+                    <div class="hint">A self-contained HTML file (like a visualizer). Visitors get an &ldquo;Open interactive version&rdquo; button on the project page.</div>
                 </div>
                 <button class="btn primary" type="submit" id="addProjBtn">Upload project</button>
             </form>
