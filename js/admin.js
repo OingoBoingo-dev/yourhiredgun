@@ -350,7 +350,8 @@
       var html = '';
       f.data.forEach(function (l, i) {
         html += '<li><div class="item-row"><span class="item-title">' + esc(l.title) +
-          ' <span class="item-sub">' + esc(l.date || '') + '</span></span>' +
+          ' <span class="item-sub">' + esc(l.date || '') +
+          ((l.links || []).length ? ' · ' + l.links.length + ' supporting' : '') + '</span></span>' +
           '<span class="item-btns">' +
           '<button class="btn mini" data-edit-link="' + i + '">Edit</button>' +
           '<button class="btn danger" data-del-link="' + i + '">Delete</button>' +
@@ -427,20 +428,43 @@
   });
 
   /* ================= EDIT LINK ================= */
+  function supRowHtml(s) {
+    s = s || { title: '', url: '' };
+    return '<div class="sup-row">' +
+      '<input type="text" class="ef-sup-title" placeholder="Title" value="' + esc(s.title) + '">' +
+      '<input type="url" class="ef-sup-url" placeholder="https://…" value="' + esc(s.url) + '">' +
+      '<button class="btn danger" data-rm-sup type="button">&times;</button>' +
+      '</div>';
+  }
+
   $('linkList').addEventListener('click', function (e) {
     var t = e.target;
     if (t.hasAttribute('data-cancel-edit')) { closeEditSlots($('linkList')); return; }
+
+    // supporting-links rows: add / remove
+    if (t.hasAttribute('data-add-sup')) {
+      t.insertAdjacentHTML('beforebegin', supRowHtml());
+      return;
+    }
+    if (t.hasAttribute('data-rm-sup')) {
+      t.closest('.sup-row').remove();
+      return;
+    }
 
     var ei = t.getAttribute('data-edit-link');
     if (ei !== null) {
       closeEditSlots($('linkList'));
       var l = cache.links[Number(ei)];
       if (!l) return;
+      var supHtml = (l.links || []).map(supRowHtml).join('');
       t.closest('li').querySelector('.edit-slot').innerHTML =
         '<div class="edit-form">' +
         '<div class="field"><label>Title</label><input type="text" class="ef-title" value="' + esc(l.title) + '"></div>' +
         '<div class="field"><label>URL</label><input type="url" class="ef-url" value="' + esc(l.url) + '"></div>' +
         '<div class="field"><label>Note</label><input type="text" class="ef-note" value="' + esc(l.note || '') + '"></div>' +
+        '<div class="field"><label>Supporting links (shown on the link’s page)</label>' +
+        supHtml +
+        '<button class="btn mini" data-add-sup type="button">+ Add supporting link</button></div>' +
         '<button class="btn primary" data-save-link="' + ei + '">Save changes</button> ' +
         '<button class="btn" data-cancel-edit>Cancel</button>' +
         '</div>';
@@ -454,12 +478,19 @@
     var url = form.querySelector('.ef-url').value.trim();
     var note = form.querySelector('.ef-note').value.trim();
     if (!title || !url) { status('Title and URL can’t be empty.', 'err'); return; }
+    var sup = [];
+    form.querySelectorAll('.sup-row').forEach(function (row) {
+      var su = row.querySelector('.ef-sup-url').value.trim();
+      var st = row.querySelector('.ef-sup-title').value.trim();
+      if (su) sup.push({ title: st || su, url: su });
+    });
     t.disabled = true;
     status('Saving changes…', 'busy');
     readJsonFile('data/links.json').then(function (f) {
       var l2 = f.data[Number(si)];
       if (!l2) throw new Error('Link not found — reload and try again.');
       l2.title = title; l2.url = url; l2.note = note;
+      if (sup.length) l2.links = sup; else delete l2.links;
       return writeJsonFile('data/links.json', f.data, 'Edit link: ' + title, f.sha);
     }).then(function () { status('Link updated. Live in about a minute.', 'ok'); loadLists(); })
       .catch(function (err) { status(err.message, 'err'); t.disabled = false; });

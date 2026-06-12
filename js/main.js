@@ -30,17 +30,18 @@ var YHG = (function () {
       }
       // group by date, newest group last-added first
       var groups = {}, order = [];
-      links.forEach(function (l) {
+      links.forEach(function (l, i) {
         var d = l.date || '';
         if (!groups[d]) { groups[d] = []; order.push(d); }
-        groups[d].push(l);
+        groups[d].push({ l: l, i: i });
       });
       var html = '';
       order.reverse().forEach(function (d) {
         if (d) html += '<h3 class="link-group-date">' + esc(d) + '</h3>';
         html += '<ul class="link-list">';
-        groups[d].forEach(function (l) {
-          html += '<li><a href="' + esc(l.url) + '" target="_blank" rel="noopener">' +
+        groups[d].forEach(function (g) {
+          var l = g.l;
+          html += '<li><a href="link.html?i=' + g.i + '">' +
             '<span class="link-title">' + esc(l.title) + '</span>' +
             '<span class="link-host">' + esc(hostOf(l.url)) + '</span></a>' +
             (l.note ? '<span class="link-note">' + esc(l.note) + '</span>' : '') +
@@ -51,6 +52,69 @@ var YHG = (function () {
       el.innerHTML = html;
     }).catch(function () {
       el.innerHTML = '<p class="empty-note">Could not load links.</p>';
+    });
+  }
+
+  /* ---------- Single link landing page ---------- */
+  // Preview image comes from the linked site itself: its og:image via
+  // microlink (CORS-friendly), falling back to a live page screenshot.
+  function linkPreview(url, heroEl) {
+    var img = document.createElement('img');
+    img.alt = 'Preview of ' + hostOf(url);
+    img.loading = 'lazy';
+    var triedFallback = false;
+    img.onerror = function () {
+      if (!triedFallback) {
+        triedFallback = true;
+        img.src = 'https://image.thum.io/get/width/1200/' + url;
+      } else {
+        heroEl.style.display = 'none';
+      }
+    };
+    fetch('https://api.microlink.io/?url=' + encodeURIComponent(url))
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        var d = j && j.data;
+        var src = d && ((d.image && d.image.url) || (d.logo && d.logo.url));
+        if (src) img.src = src; else img.onerror();
+      })
+      .catch(function () { img.onerror(); });
+    var a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    a.appendChild(img);
+    heroEl.appendChild(a);
+  }
+
+  function renderLink(els) {
+    var i = parseInt(new URLSearchParams(location.search).get('i'), 10);
+    getJSON('data/links.json').then(function (links) {
+      var l = links[i];
+      if (!l) {
+        els.title.textContent = 'Not found';
+        els.host.textContent = 'This link doesn’t exist (yet).';
+        els.visit.style.display = 'none';
+        els.hero.style.display = 'none';
+        return;
+      }
+      document.title = l.title + ' — Your Hired Gun';
+      els.title.textContent = l.title;
+      els.host.textContent = hostOf(l.url);
+      els.note.textContent = l.note || '';
+      if (!l.note) els.note.style.display = 'none';
+      els.visit.href = l.url;
+      linkPreview(l.url, els.hero);
+      var sup = l.links || [];
+      if (sup.length) {
+        var html = '<h3 class="link-group-date">Supporting links</h3><ul class="link-list">';
+        sup.forEach(function (s) {
+          html += '<li><a href="' + esc(s.url) + '" target="_blank" rel="noopener">' +
+            '<span class="link-title">' + esc(s.title || s.url) + '</span>' +
+            '<span class="link-host">' + esc(hostOf(s.url)) + '</span></a></li>';
+        });
+        els.support.innerHTML = html + '</ul>';
+      }
+    }).catch(function () {
+      els.title.textContent = 'Could not load link.';
     });
   }
 
@@ -197,5 +261,5 @@ var YHG = (function () {
     }
   }
 
-  return { renderLinks: renderLinks, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos };
+  return { renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos };
 })();

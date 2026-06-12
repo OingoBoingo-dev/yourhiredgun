@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Harper Shaw">
+    <title>Art Link — Your Hired Gun</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="Profile Photo.png" type="image/png">
+</head>
+<body>
+<div class="page">
+
+    <nav class="site-nav">
+        <a class="brand" href="index.html">Your Hired Gun</a>
+        <div class="links">
+            <a href="about.html" class="active">Art Links</a>
+            <a href="projects.html">Projects</a>
+            <a href="videos.html">Videos</a>
+        </div>
+    </nav>
+
+    <h1 class="page-title" id="lTitle">&hellip;</h1>
+    <p class="page-sub" id="lHost"></p>
+
+    <div id="lHero" class="link-hero"></div>
+
+    <p class="project-desc" id="lNote"></p>
+    <p class="link-visit"><a class="btn primary" id="lVisit" target="_blank" rel="noopener">Visit site &nearr;</a></p>
+
+    <div id="lSupport"></div>
+
+    <footer class="site-footer">
+        <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
+        <a href="about.html">All links</a>
+    </footer>
+
+</div>
+
+<script src="js/main.js"></script>
+<script>
+YHG.renderLink({
+    title: document.getElementById('lTitle'),
+    host: document.getElementById('lHost'),
+    hero: document.getElementById('lHero'),
+    note: document.getElementById('lNote'),
+    visit: document.getElementById('lVisit'),
+    support: document.getElementById('lSupport')
+});
+</script>
+<script data-goatcounter="https://oingoboingo.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body>
+</html>

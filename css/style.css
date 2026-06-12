@@ -719,3 +719,17 @@ h2.section-h {
   .link-list a { flex-direction: column; gap: 4px; }
   .zoom-frame:hover img { transform: none; } /* no hover-zoom on touch */
 }
+
+/* ============ LINK LANDING PAGE ============ */
+.link-hero {
+  margin: 28px 0 8px;
+  border: 1px solid var(--line);
+  min-height: 60px;
+}
+.link-hero img { display: block; width: 100%; }
+.link-hero a { display: block; line-height: 0; }
+.link-visit { margin: 22px 0 34px; }
+
+/* supporting-link rows in the admin edit form */
+.sup-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.sup-row input { flex: 1; min-width: 0; }
