@@ -35,7 +35,10 @@ var YHG = (function () {
       }
       var p = page && t.pages && t.pages[page];
       if (p && p.image) {
-        document.documentElement.style.setProperty('--bg-img', 'url("' + p.image + '")');
+        // root-absolute path: browsers resolve url() in CSS variables against
+        // the stylesheet folder, not the page, so relative paths 404
+        var img = /^(https?:)?\//.test(p.image) ? p.image : '/' + p.image;
+        document.documentElement.style.setProperty('--bg-img', 'url("' + img + '")');
         document.documentElement.style.setProperty('--bg-pos', p.position || 'center');
       }
     }).catch(function () { /* no theme.json yet — CSS defaults apply */ });
