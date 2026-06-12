@@ -1,8 +1,8 @@
 {
   "font": {
-    "name": "Space Mono",
-    "stack": "\"Space Mono\", \"Courier New\", monospace",
-    "gf": "Space+Mono:ital,wght@0,400;0,700;1,400"
+    "name": "Special Elite (typewriter)",
+    "stack": "\"Special Elite\", \"Courier New\", monospace",
+    "gf": "Special+Elite"
   },
   "pages": {
     "landing": {
