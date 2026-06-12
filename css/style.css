@@ -138,10 +138,10 @@ a:hover { color: var(--ember); }
 .bg-layer {
   position: fixed;
   inset: 0;
-  background-image: url("../assets/traveller.jpg");
+  background-image: var(--bg-img, url("../assets/traveller.jpg"));
   background-size: cover;
   /* favor the top of the painting so the figure over the hill stays visible */
-  background-position: center 18%;
+  background-position: var(--bg-pos, center 18%);
 }
 
 .bg-color { z-index: 0; }
@@ -371,17 +371,19 @@ a:hover { color: var(--ember); }
 
 /* ----- background spotlight (same treatment as the landing page) ----- */
 
+body.spotlight-page .bg-layer {
+  background-position: var(--bg-pos, center);
+}
 body.videos .bg-layer {
-  background-image: url("../assets/videos-bg.jpg");
-  background-position: center;
+  background-image: var(--bg-img, url("../assets/videos-bg.jpg"));
 }
 
 /* the color layer gets a boost so the spotlight really pops
    against the darkened gray layer */
-body.videos .bg-color {
+body.spotlight-page .bg-color {
   filter: saturate(1.9) brightness(1.35) contrast(1.05);
 }
-body.videos .bg-gray {
+body.spotlight-page .bg-gray {
   filter: grayscale(1) contrast(1.05) brightness(0.55);
 }
 
@@ -394,7 +396,7 @@ body.videos .bg-gray {
   background: rgba(19, 17, 20, 0.5);
 }
 
-body.videos .page {
+body.spotlight-page .page {
   position: relative;
   z-index: 3;
 }
@@ -733,3 +735,27 @@ h2.section-h {
 /* supporting-link rows in the admin edit form */
 .sup-row { display: flex; gap: 8px; margin-bottom: 8px; }
 .sup-row input { flex: 1; min-width: 0; }
+
+/* ============ THEME PREVIEW (admin) ============ */
+.tprev {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  max-width: 640px;
+  border: 1px solid var(--line);
+  margin: 6px 0 16px;
+  cursor: crosshair;
+}
+.tprev .bg-layer, .tprev .mask-wrap, .tprev .bg-vignette { position: absolute; inset: 0; }
+.tprev .bg-color { filter: saturate(1.5) brightness(1.15); }
+.tprev-text {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: center; justify-content: center; text-align: center;
+  pointer-events: none;
+}
+.tprev-text h3 { margin: 0; font-size: 24px; font-family: inherit; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7); }
+.tprev-text p, .tprev-text span {
+  margin: 0; font-size: 13px; font-family: inherit;
+  color: var(--paper-dim); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}

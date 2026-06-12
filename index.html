@@ -40,52 +40,10 @@
         <a href="admin.html" title="Admin">&#9670;</a>
     </footer>
 
+    <script src="js/main.js"></script>
     <script>
-    (function () {
-        var root = document.getElementById('maskRoot');
-        var tx = window.innerWidth / 2, ty = window.innerHeight / 2;
-        var x = tx, y = ty;
-        var hasMouse = window.matchMedia('(pointer: fine)').matches;
-        var wander = 0;
-
-        document.addEventListener('mousemove', function (e) {
-            tx = e.clientX; ty = e.clientY; hasMouse = true;
-        });
-        document.addEventListener('touchmove', function (e) {
-            if (e.touches.length) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }
-        }, { passive: true });
-
-        // each lobe of the blob drifts and breathes on its own rhythm
-        var lobes = [
-            { fx: 0.9,  fy: 1.3, px: 0.0, py: 2.1, fr: 0.7, pr: 0.5 },
-            { fx: 1.4,  fy: 0.8, px: 4.2, py: 0.7, fr: 1.1, pr: 2.6 },
-            { fx: 0.6,  fy: 1.1, px: 2.4, py: 5.0, fr: 0.9, pr: 4.1 }
-        ];
-
-        function frame(now) {
-            var t = now / 1000;
-            if (!hasMouse) {
-                // no pointer (phones/tablets): the spotlight slowly wanders the painting
-                wander += 0.004;
-                tx = window.innerWidth  * (0.5 + 0.38 * Math.sin(wander));
-                ty = window.innerHeight * (0.5 + 0.30 * Math.sin(wander * 0.7 + 1.3));
-            }
-            x += (tx - x) * 0.12;
-            y += (ty - y) * 0.12;
-
-            var R = Math.max(160, window.innerWidth * 0.115);
-            var amp = R * 0.32;
-
-            lobes.forEach(function (l, i) {
-                var n = i + 1;
-                root.style.setProperty('--x' + n, (x + amp * Math.sin(t * l.fx + l.px)) + 'px');
-                root.style.setProperty('--y' + n, (y + amp * Math.cos(t * l.fy + l.py)) + 'px');
-                root.style.setProperty('--r' + n, (R * (1 + 0.22 * Math.sin(t * l.fr + l.pr))) + 'px');
-            });
-            requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
-    })();
+    YHG.applyTheme('landing');
+    YHG.spotlight(document.getElementById('maskRoot'));
     </script>
 
     <!-- GoatCounter analytics — see SETUP.md -->

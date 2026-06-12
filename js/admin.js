@@ -311,6 +311,7 @@
         $('panelView').style.display = 'block';
         status('Connected to ' + c.owner + '/' + c.repo + '.', 'ok');
         loadLists();
+        thInit();
       }).catch(function (err) {
         status('Could not reach the repo: ' + err.message + ' — check the settings below.', 'err');
       });
@@ -495,6 +496,180 @@
     }).then(function () { status('Link updated. Live in about a minute.', 'ok'); loadLists(); })
       .catch(function (err) { status(err.message, 'err'); t.disabled = false; });
   });
+
+  /* ================= THEME ================= */
+  var TH_FONTS = [
+    { name: 'Space Mono', stack: '"Space Mono", "Courier New", monospace', gf: 'Space+Mono:ital,wght@0,400;0,700;1,400' },
+    { name: 'IBM Plex Mono', stack: '"IBM Plex Mono", monospace', gf: 'IBM+Plex+Mono:ital,wght@0,400;0,700;1,400' },
+    { name: 'Courier Prime', stack: '"Courier Prime", "Courier New", monospace', gf: 'Courier+Prime:ital,wght@0,400;0,700;1,400' },
+    { name: 'Special Elite (typewriter)', stack: '"Special Elite", "Courier New", monospace', gf: 'Special+Elite' },
+    { name: 'EB Garamond (serif)', stack: '"EB Garamond", Georgia, serif', gf: 'EB+Garamond:ital,wght@0,400;0,700;1,400' },
+    { name: 'Cormorant Garamond (serif)', stack: '"Cormorant Garamond", Georgia, serif', gf: 'Cormorant+Garamond:ital,wght@0,400;0,700;1,400' },
+    { name: 'Syne (display)', stack: '"Syne", sans-serif', gf: 'Syne:wght@400;700' },
+    { name: 'Work Sans (sans)', stack: '"Work Sans", sans-serif', gf: 'Work+Sans:ital,wght@0,400;0,700;1,400' },
+    { name: 'Inter (sans)', stack: '"Inter", sans-serif', gf: 'Inter:ital,wght@0,400;0,700;1,400' },
+    { name: 'Courier New (no download)', stack: '"Courier New", monospace', gf: null }
+  ];
+  var TH_DEFAULTS = {
+    font: TH_FONTS[0],
+    pages: {
+      landing: { image: 'assets/traveller.jpg', position: 'center 18%' },
+      links: { image: 'assets/traveller.jpg', position: 'center' },
+      projects: { image: 'assets/traveller.jpg', position: 'center' },
+      videos: { image: 'assets/videos-bg.jpg', position: 'center' }
+    }
+  };
+  var th = { data: null, pending: null, page: 'landing', inited: false };
+
+  function thFont() { return TH_FONTS[Number($('thFont').value)] || TH_FONTS[0]; }
+  function thCur() { return th.data.pages[th.page]; }
+
+  // pull a Google Font into the admin page so the preview text can use it
+  function thGFLoad(gf) {
+    if (!gf) return;
+    var id = 'gf' + gf.replace(/[^A-Za-z0-9]/g, '');
+    if (document.getElementById(id)) return;
+    var l = document.createElement('link');
+    l.id = id; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=' + gf + '&display=swap';
+    document.head.appendChild(l);
+  }
+
+  function thSetPos(v) {
+    var sel = $('thPos');
+    var has = Array.prototype.some.call(sel.options, function (o) { return o.value === v; });
+    if (!has) {
+      var o = document.createElement('option');
+      o.value = v; o.textContent = 'Custom (current)';
+      sel.appendChild(o);
+    }
+    sel.value = v;
+  }
+
+  function thPreview() {
+    var src = th.pending || thCur().image;
+    var pos = $('thPos').value;
+    [$('thPrevColor'), $('thPrevGray')].forEach(function (el) {
+      el.style.backgroundImage = 'url("' + src + '")';
+      el.style.backgroundPosition = pos;
+    });
+    var f = thFont();
+    thGFLoad(f.gf);
+    $('thPrevText').style.fontFamily = f.stack;
+    $('thImgNote').textContent = th.pending
+      ? 'New image ready — press “Save theme” to publish it.'
+      : 'Current: ' + (thCur().image || '').split('/').pop();
+  }
+
+  // draw src (a path or data URL) to a canvas, optionally turned 90°,
+  // capped at 2000px on the long side; returns a JPEG data URL
+  function thBake(src, rotate) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.onload = function () {
+        var w = img.width, h = img.height;
+        var ow = rotate ? h : w, oh = rotate ? w : h;
+        var scale = Math.min(1, 2000 / Math.max(ow, oh));
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(ow * scale);
+        cv.height = Math.round(oh * scale);
+        var cx = cv.getContext('2d');
+        cx.translate(cv.width / 2, cv.height / 2);
+        if (rotate) cx.rotate(Math.PI / 2);
+        cx.scale(scale, scale);
+        cx.drawImage(img, -w / 2, -h / 2);
+        resolve(cv.toDataURL('image/jpeg', 0.88));
+      };
+      img.onerror = function () { reject(new Error('Could not load the image.')); };
+      img.src = src;
+    });
+  }
+
+  function thInit() {
+    if (th.inited) return;
+    th.inited = true;
+
+    var sel = $('thFont');
+    TH_FONTS.forEach(function (f, i) {
+      var o = document.createElement('option');
+      o.value = i; o.textContent = f.name;
+      sel.appendChild(o);
+    });
+
+    ghGet('data/theme.json').then(function (f) {
+      var t = null;
+      if (f) { try { t = JSON.parse(b64DecodeUtf8(f.content)); } catch (e) { t = null; } }
+      th.data = t || JSON.parse(JSON.stringify(TH_DEFAULTS));
+      if (!th.data.pages) th.data.pages = JSON.parse(JSON.stringify(TH_DEFAULTS.pages));
+      var fi = -1;
+      TH_FONTS.forEach(function (x, i) { if (th.data.font && x.name === th.data.font.name) fi = i; });
+      sel.value = fi === -1 ? 0 : fi;
+      thSetPos(thCur().position || 'center');
+      thPreview();
+      YHG.spotlight($('thPrevMask'), $('thPrev'));
+    }).catch(function (err) { status(err.message, 'err'); });
+
+    $('thPage').addEventListener('change', function () {
+      th.page = $('thPage').value;
+      th.pending = null;
+      $('thImage').value = '';
+      thSetPos(thCur().position || 'center');
+      thPreview();
+    });
+    $('thPos').addEventListener('change', thPreview);
+    $('thFont').addEventListener('change', thPreview);
+
+    $('thImage').addEventListener('change', function () {
+      var file = $('thImage').files[0];
+      if (!file) return;
+      var url = URL.createObjectURL(file);
+      thBake(url, false).then(function (d) {
+        URL.revokeObjectURL(url);
+        th.pending = d;
+        thPreview();
+      }).catch(function (err) { status(err.message, 'err'); });
+    });
+
+    $('thRotate').addEventListener('click', function () {
+      thBake(th.pending || thCur().image, true).then(function (d) {
+        th.pending = d;
+        thPreview();
+      }).catch(function (err) { status(err.message, 'err'); });
+    });
+
+    $('thSave').addEventListener('click', function () {
+      var btn = $('thSave');
+      btn.disabled = true;
+      status('Saving theme…', 'busy');
+      var t = JSON.parse(JSON.stringify(th.data));
+      t.font = thFont();
+      t.pages[th.page].position = $('thPos').value;
+      var chain = Promise.resolve();
+      if (th.pending) {
+        var path = 'images/site/bg-' + th.page + '-' + Date.now() + '.jpg';
+        var old = t.pages[th.page].image;
+        chain = ghPut(path, th.pending.split(',')[1], 'Theme: new ' + th.page + ' background').then(function () {
+          t.pages[th.page].image = path;
+          // tidy up the previous admin-uploaded background (never the original art)
+          if (/^images\/site\//.test(old)) {
+            return ghDelete(old, 'Theme: remove old ' + th.page + ' background').catch(function () {});
+          }
+        });
+      }
+      chain.then(function () {
+        return ghGet('data/theme.json');
+      }).then(function (f) {
+        return ghPut('data/theme.json', b64EncodeUtf8(JSON.stringify(t, null, 2)), 'Theme update', f && f.sha);
+      }).then(function () {
+        th.data = t;
+        th.pending = null;
+        $('thImage').value = '';
+        thPreview();
+        status('Theme saved. Live in about a minute.', 'ok');
+      }).catch(function (err) { status(err.message, 'err'); })
+        .finally(function () { btn.disabled = false; });
+    });
+  }
 
   /* ================= EDIT PROJECT ================= */
   $('projList').addEventListener('click', function (e) {

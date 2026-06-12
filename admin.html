@@ -71,6 +71,7 @@
             <button class="active" data-tab="tabLinks">Art Links</button>
             <button data-tab="tabProjects">Projects</button>
             <button data-tab="tabVideos">Videos</button>
+            <button data-tab="tabTheme">Theme</button>
             <button data-tab="tabTraffic">Traffic</button>
         </div>
 
@@ -165,6 +166,61 @@
             <ul class="admin-list" id="vidList"></ul>
         </section>
 
+        <!-- ---- THEME ---- -->
+        <section id="tabTheme" class="admin-section">
+            <h2 class="section-h">Background &amp; font</h2>
+            <div class="field">
+                <label for="thPage">Page</label>
+                <select id="thPage">
+                    <option value="landing">Landing</option>
+                    <option value="links">Art Links</option>
+                    <option value="projects">Projects</option>
+                    <option value="videos">Videos</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="thImage">Background image (leave empty to keep the current one)</label>
+                <input type="file" id="thImage" accept="image/*">
+                <div class="hint" id="thImgNote"></div>
+            </div>
+            <div class="field">
+                <label>Orientation</label>
+                <button class="btn mini" id="thRotate" type="button">Rotate 90&deg;</button>
+                <span class="hint">Each press turns the image a quarter turn &mdash; the rotation is baked into the image when you save.</span>
+            </div>
+            <div class="field">
+                <label for="thPos">Vertical focus (which part of the image stays in view)</label>
+                <select id="thPos">
+                    <option value="center top">Top</option>
+                    <option value="center 25%">Upper</option>
+                    <option value="center">Center</option>
+                    <option value="center 75%">Lower</option>
+                    <option value="center bottom">Bottom</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="thFont">Site font (applies to every page)</label>
+                <select id="thFont"></select>
+            </div>
+
+            <h2 class="section-h">Preview</h2>
+            <div class="tprev" id="thPrev">
+                <div class="bg-layer bg-color" id="thPrevColor"></div>
+                <div class="mask-wrap m1" id="thPrevMask">
+                    <div class="mask-wrap m2"><div class="bg-layer bg-gray m3" id="thPrevGray"></div></div>
+                </div>
+                <div class="bg-vignette"></div>
+                <div class="tprev-text" id="thPrevText">
+                    <h3>Your Hired Gun</h3>
+                    <p>A collection of things I enjoy</p>
+                    <span>Art Links &middot; Projects &middot; Videos</span>
+                </div>
+            </div>
+            <p class="hint" style="margin:-6px 0 16px; color:var(--paper-dim); font-size:13px">Move your mouse over the preview &mdash; the blob behaves exactly like this on the live page. The font preview is the text in the box.</p>
+
+            <button class="btn primary" id="thSave" type="button">Save theme</button>
+        </section>
+
         <!-- ---- TRAFFIC ---- -->
         <section id="tabTraffic" class="admin-section">
             <h2 class="section-h">Traffic</h2>
@@ -184,6 +240,7 @@
 
 </div>
 
+<script src="js/main.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>

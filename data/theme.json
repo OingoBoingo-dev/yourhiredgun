@@ -1,0 +1,25 @@
+{
+  "font": {
+    "name": "Space Mono",
+    "stack": "\"Space Mono\", \"Courier New\", monospace",
+    "gf": "Space+Mono:ital,wght@0,400;0,700;1,400"
+  },
+  "pages": {
+    "landing": {
+      "image": "assets/traveller.jpg",
+      "position": "center 18%"
+    },
+    "links": {
+      "image": "assets/traveller.jpg",
+      "position": "center"
+    },
+    "projects": {
+      "image": "assets/traveller.jpg",
+      "position": "center"
+    },
+    "videos": {
+      "image": "assets/videos-bg.jpg",
+      "position": "center"
+    }
+  }
+}

@@ -21,6 +21,90 @@ var YHG = (function () {
     });
   }
 
+  /* ---------- Theme (admin-managed background + font) ---------- */
+  function applyTheme(page) {
+    return getJSON('data/theme.json').then(function (t) {
+      if (t.font && t.font.gf) {
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?family=' + t.font.gf + '&display=swap';
+        document.head.appendChild(l);
+      }
+      if (t.font && t.font.stack) {
+        document.documentElement.style.setProperty('--mono', t.font.stack);
+      }
+      var p = page && t.pages && t.pages[page];
+      if (p && p.image) {
+        document.documentElement.style.setProperty('--bg-img', 'url("' + p.image + '")');
+        document.documentElement.style.setProperty('--bg-pos', p.position || 'center');
+      }
+    }).catch(function () { /* no theme.json yet — CSS defaults apply */ });
+  }
+
+  /* ---------- Spotlight blob (landing, section pages, admin preview) ----------
+     root = the .m1 mask wrapper; box (optional) = a container the blob should
+     live in instead of the whole viewport (used by the admin preview). */
+  function spotlight(root, box) {
+    if (!root) return;
+    var useBox = !!box;
+    function size() {
+      if (!useBox) return { w: window.innerWidth, h: window.innerHeight };
+      var r = box.getBoundingClientRect();
+      return { w: r.width || 320, h: r.height || 180 };
+    }
+    var s0 = size();
+    var tx = s0.w / 2, ty = s0.h / 2, x = tx, y = ty;
+    var hasMouse = useBox ? false : window.matchMedia('(pointer: fine)').matches;
+    var wander = 0;
+
+    (useBox ? box : document).addEventListener('mousemove', function (e) {
+      if (useBox) {
+        var r = box.getBoundingClientRect();
+        tx = e.clientX - r.left; ty = e.clientY - r.top;
+      } else { tx = e.clientX; ty = e.clientY; }
+      hasMouse = true;
+    });
+    if (useBox) {
+      box.addEventListener('mouseleave', function () { hasMouse = false; });
+    } else {
+      document.addEventListener('touchmove', function (e) {
+        if (e.touches.length) { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }
+      }, { passive: true });
+    }
+
+    // each lobe of the blob drifts and breathes on its own rhythm
+    var lobes = [
+      { fx: 0.9, fy: 1.3, px: 0.0, py: 2.1, fr: 0.7, pr: 0.5 },
+      { fx: 1.4, fy: 0.8, px: 4.2, py: 0.7, fr: 1.1, pr: 2.6 },
+      { fx: 0.6, fy: 1.1, px: 2.4, py: 5.0, fr: 0.9, pr: 4.1 }
+    ];
+
+    function frame(now) {
+      var t = now / 1000;
+      var d = size();
+      if (!hasMouse) {
+        // no pointer: the spotlight slowly wanders the painting
+        wander += 0.004;
+        tx = d.w * (0.5 + 0.38 * Math.sin(wander));
+        ty = d.h * (0.5 + 0.30 * Math.sin(wander * 0.7 + 1.3));
+      }
+      x += (tx - x) * 0.12;
+      y += (ty - y) * 0.12;
+
+      var R = Math.max(useBox ? 40 : 160, d.w * 0.115);
+      var amp = R * 0.32;
+
+      lobes.forEach(function (l, i) {
+        var n = i + 1;
+        root.style.setProperty('--x' + n, (x + amp * Math.sin(t * l.fx + l.px)) + 'px');
+        root.style.setProperty('--y' + n, (y + amp * Math.cos(t * l.fy + l.py)) + 'px');
+        root.style.setProperty('--r' + n, (R * (1 + 0.22 * Math.sin(t * l.fr + l.pr))) + 'px');
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
   /* ---------- Art Links page ---------- */
   function renderLinks(el) {
     getJSON('data/links.json').then(function (links) {
@@ -261,5 +345,5 @@ var YHG = (function () {
     }
   }
 
-  return { renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos };
+  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos };
 })();
