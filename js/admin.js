@@ -242,6 +242,19 @@
       .catch(function () { return null; });
   }
 
+  // music metadata: noembed first (YouTube/SoundCloud/Bandcamp), Spotify's own oEmbed as a fallback
+  function fetchMusicMeta(url) {
+    return fetchOembed(url).then(function (info) {
+      if (info && (info.thumbnail_url || info.title || info.html)) return info;
+      if (/open\.spotify\.com\//.test(url)) {
+        return fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(url))
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; });
+      }
+      return info;
+    });
+  }
+
   // grab a thumbnail from ~1s into an MP4, as base64 jpeg (null if it fails)
   function captureVideoThumb(file) {
     return new Promise(function (resolve) {
@@ -343,7 +356,7 @@
   });
 
   /* ================= LISTS ================= */
-  var cache = { links: [], projects: [], videos: [] };
+  var cache = { links: [], projects: [], videos: [], music: [] };
 
   function loadLists() {
     readJsonFile('data/links.json').then(function (f) {
@@ -387,6 +400,21 @@
           '</span></div><div class="edit-slot"></div></li>';
       });
       $('vidList').innerHTML = html || '<li><span class="item-sub">No videos yet.</span></li>';
+    });
+    readJsonFile('data/music.json').then(function (f) {
+      cache.music = f.data;
+      var html = '';
+      f.data.forEach(function (m, i) {
+        var where = m.type === 'file' ? 'audio file'
+          : esc(m.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+        html += '<li><div class="item-row"><span class="item-title">' + esc(m.title) +
+          ' <span class="item-sub">' + where + ' · ' + esc(m.date || '') + '</span></span>' +
+          '<span class="item-btns">' +
+          '<button class="btn mini" data-edit-mus="' + i + '">Edit</button>' +
+          '<button class="btn danger" data-del-mus="' + i + '">Delete</button>' +
+          '</span></div><div class="edit-slot"></div></li>';
+      });
+      $('musList').innerHTML = html || '<li><span class="item-sub">No music yet.</span></li>';
     });
   }
 
@@ -516,7 +544,8 @@
       landing: { image: 'assets/traveller.jpg', position: 'center 18%' },
       links: { image: 'assets/traveller.jpg', position: 'center' },
       projects: { image: 'assets/traveller.jpg', position: 'center' },
-      videos: { image: 'assets/videos-bg.jpg', position: 'center' }
+      videos: { image: 'assets/videos-bg.jpg', position: 'center' },
+      music: { image: 'assets/videos-bg.jpg', position: 'center' }
     }
   };
   var th = { data: null, pending: null, page: 'landing', inited: false };
@@ -601,6 +630,9 @@
       if (f) { try { t = JSON.parse(b64DecodeUtf8(f.content)); } catch (e) { t = null; } }
       th.data = t || JSON.parse(JSON.stringify(TH_DEFAULTS));
       if (!th.data.pages) th.data.pages = JSON.parse(JSON.stringify(TH_DEFAULTS.pages));
+      Object.keys(TH_DEFAULTS.pages).forEach(function (k) {
+        if (!th.data.pages[k]) th.data.pages[k] = JSON.parse(JSON.stringify(TH_DEFAULTS.pages[k]));
+      });
       var fi = -1;
       TH_FONTS.forEach(function (x, i) { if (th.data.font && x.name === th.data.font.name) fi = i; });
       sel.value = fi === -1 ? 0 : fi;
@@ -937,6 +969,154 @@
         return writeJsonFile('data/videos.json', f.data, 'Edit video: ' + title, f.sha);
       });
     }).then(function () { status('Video updated. Live in about a minute.', 'ok'); loadLists(); })
+      .catch(function (err) { status(err.message, 'err'); t.disabled = false; });
+  });
+
+  /* ================= MUSIC ================= */
+  $('addMusUrlForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = $('musUrl').value.trim();
+    var manual = $('musUrlTitle').value.trim();
+    var btn = $('addMusUrlBtn'); btn.disabled = true;
+    status('Looking up track info…', 'busy');
+    fetchMusicMeta(url).then(function (info) {
+      var yt = ytIdOf(url);
+      var thumb = (info && info.thumbnail_url) || (yt ? 'https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg' : '');
+      var title = manual || (info && info.title) || url.replace(/^https?:\/\/(www\.)?/, '');
+      var entry = { type: 'embed', title: title, url: url, thumb: thumb, date: today() };
+      // platforms we can't build an embed URL for (e.g. Bandcamp): keep the oEmbed iframe so it still plays inline
+      if (!YHG.musicEmbedUrl(url) && info && info.html) entry.embedHtml = info.html;
+      status('Saving music…', 'busy');
+      return readJsonFile('data/music.json').then(function (f) {
+        f.data.push(entry);
+        return writeJsonFile('data/music.json', f.data, 'Add music: ' + title, f.sha);
+      }).then(function () {
+        var playable = !!(YHG.musicEmbedUrl(url) || entry.embedHtml);
+        status(playable
+          ? (thumb ? 'Music saved. Live in about a minute.'
+                   : 'Music saved, but no cover art was found — the card shows a plain play button.')
+          : 'Saved. This platform can’t play inline, so the card opens the link in a new tab.', 'ok');
+        $('addMusUrlForm').reset();
+        loadLists();
+      });
+    }).catch(function (err) { status(err.message, 'err'); })
+      .finally(function () { btn.disabled = false; });
+  });
+
+  $('addMusFileForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var file = $('musFile').files[0];
+    var cover = $('musCover').files[0];
+    var title = $('musFileTitle').value.trim();
+    if (!file) { status('Choose an audio file.', 'err'); return; }
+    if (tooBig(file)) return;
+    var btn = $('addMusFileBtn'); btn.disabled = true;
+    var slug = slugify(title) + '-' + Date.now().toString(36);
+    var am = file.name.toLowerCase().match(/\.(mp3|wav|m4a|ogg|oga|flac|aac)$/);
+    var aext = am ? am[1] : 'mp3';
+    var thumbPath = '';
+    var p = Promise.resolve();
+    if (cover) {
+      status('Processing cover image…', 'busy');
+      p = fileToB64(cover).then(function (o) {
+        thumbPath = 'images/music/' + slug + '.' + o.ext;
+        return ghPut(thumbPath, o.b64, 'Add music cover: ' + title);
+      });
+    }
+    p.then(function () {
+      status('Uploading audio (' + (file.size / 1048576).toFixed(1) + ' MB)… this can take a minute.', 'busy');
+      return fileToB64Raw(file);
+    }).then(function (b64) {
+      var srcPath = 'audio/' + slug + '.' + aext;
+      return ghPut(srcPath, b64, 'Add music: ' + title).then(function () {
+        status('Saving music…', 'busy');
+        return readJsonFile('data/music.json').then(function (f) {
+          f.data.push({ type: 'file', title: title, src: srcPath, thumb: thumbPath, date: today() });
+          return writeJsonFile('data/music.json', f.data, 'Add music: ' + title, f.sha);
+        });
+      });
+    }).then(function () {
+      status('Music uploaded. Live in about a minute.', 'ok');
+      $('addMusFileForm').reset();
+      loadLists();
+    }).catch(function (err) { status(err.message, 'err'); })
+      .finally(function () { btn.disabled = false; });
+  });
+
+  /* ================= EDIT / DELETE MUSIC ================= */
+  $('musList').addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-cancel-edit')) { closeEditSlots($('musList')); return; }
+
+    var di = t.getAttribute('data-del-mus');
+    if (di !== null) {
+      if (!confirm('Delete this music entry?')) return;
+      status('Deleting music…', 'busy');
+      readJsonFile('data/music.json').then(function (f) {
+        var removed = f.data.splice(Number(di), 1)[0];
+        return writeJsonFile('data/music.json', f.data, 'Delete music: ' + (removed ? removed.title : ''), f.sha)
+          .then(function () {
+            var chain = Promise.resolve();
+            ['src', 'thumb'].forEach(function (k) {
+              var p = removed && removed[k];
+              if (p && !/^https?:/i.test(p)) {
+                chain = chain.then(function () { return ghDelete(p, 'Remove file for deleted music'); });
+              }
+            });
+            return chain;
+          });
+      }).then(function () { status('Music deleted.', 'ok'); loadLists(); })
+        .catch(function (err) { status(err.message, 'err'); });
+      return;
+    }
+
+    var ei = t.getAttribute('data-edit-mus');
+    if (ei !== null) {
+      closeEditSlots($('musList'));
+      var m = cache.music[Number(ei)];
+      if (!m) return;
+      t.closest('li').querySelector('.edit-slot').innerHTML =
+        '<div class="edit-form">' +
+        '<div class="field"><label>Title</label><input type="text" class="ef-title" value="' + esc(m.title) + '"></div>' +
+        (m.type === 'embed'
+          ? '<div class="field"><label>URL</label><input type="url" class="ef-url" value="' + esc(m.url) + '">' +
+            '<div class="hint">If you change the URL, the cover art refreshes automatically.</div></div>'
+          : '') +
+        '<button class="btn primary" data-save-mus="' + ei + '">Save changes</button> ' +
+        '<button class="btn" data-cancel-edit>Cancel</button>' +
+        '</div>';
+      return;
+    }
+
+    var si = t.getAttribute('data-save-mus');
+    if (si === null) return;
+    var m0 = cache.music[Number(si)];
+    if (!m0) return;
+    var form = t.closest('.edit-form');
+    var title = form.querySelector('.ef-title').value.trim();
+    var urlEl = form.querySelector('.ef-url');
+    var url = urlEl ? urlEl.value.trim() : '';
+    if (!title || (urlEl && !url)) { status('Title' + (urlEl ? ' and URL' : '') + ' can’t be empty.', 'err'); return; }
+    t.disabled = true;
+    status('Saving changes…', 'busy');
+    var lookup = (urlEl && url !== m0.url) ? fetchMusicMeta(url) : Promise.resolve(undefined);
+    lookup.then(function (info) {
+      return readJsonFile('data/music.json').then(function (f) {
+        var m2 = f.data[Number(si)];
+        if (!m2) throw new Error('Music entry not found — reload and try again.');
+        m2.title = title;
+        if (urlEl) {
+          m2.url = url;
+          if (info !== undefined) {
+            var yt = ytIdOf(url);
+            m2.thumb = (info && info.thumbnail_url) || (yt ? 'https://i.ytimg.com/vi/' + yt + '/hqdefault.jpg' : '');
+            if (!YHG.musicEmbedUrl(url) && info && info.html) m2.embedHtml = info.html;
+            else delete m2.embedHtml;
+          }
+        }
+        return writeJsonFile('data/music.json', f.data, 'Edit music: ' + title, f.sha);
+      });
+    }).then(function () { status('Music updated. Live in about a minute.', 'ok'); loadLists(); })
       .catch(function (err) { status(err.message, 'err'); t.disabled = false; });
   });
 

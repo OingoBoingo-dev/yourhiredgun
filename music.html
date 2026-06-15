@@ -4,55 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="author" content="Harper Shaw">
-    <title>Art Link — Your Hired Gun</title>
+    <meta name="description" content="Music by Harper Shaw">
+    <title>Music — Your Hired Gun</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="Profile Photo.png" type="image/png">
 </head>
-<body>
+<body class="music spotlight-page">
+
+    <!-- full-color image (revealed through the spotlight) -->
+    <div class="bg-layer bg-color" aria-hidden="true"></div>
+    <!-- grayscale layer; three nested masks form an irregular morphing hole -->
+    <div class="mask-wrap m1" id="maskRoot" aria-hidden="true">
+        <div class="mask-wrap m2">
+            <div class="bg-layer bg-gray m3"></div>
+        </div>
+    </div>
+    <div class="bg-dim" aria-hidden="true"></div>
+    <div class="bg-vignette" aria-hidden="true"></div>
+
 <div class="page">
 
     <nav class="site-nav">
         <a class="brand" href="index.html">Your Hired Gun</a>
         <div class="links">
-            <a href="about.html" class="active">Art Links</a>
+            <a href="about.html">Art Links</a>
             <a href="projects.html">Projects</a>
             <a href="videos.html">Videos</a>
-            <a href="music.html">Music</a>
+            <a href="music.html" class="active">Music</a>
         </div>
     </nav>
 
-    <h1 class="page-title" id="lTitle">&hellip;</h1>
-    <p class="page-sub" id="lHost"></p>
+    <h1 class="page-title">Music</h1>
+    <p class="page-sub">Sounds. Click a card to listen.</p>
 
-    <div id="lHero" class="link-hero"></div>
-
-    <p class="project-desc" id="lNote"></p>
-    <p class="link-visit"><a class="btn primary" id="lVisit" target="_blank" rel="noopener">Visit site &nearr;</a></p>
-
-    <div id="lSupport"></div>
+    <div id="music" class="video-grid"><p class="empty-note">Loading&hellip;</p></div>
 
     <footer class="site-footer">
         <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
-        <a href="about.html">All links</a>
+        <a href="index.html">Back to home</a>
     </footer>
 
 </div>
 
+<div class="lightbox" id="lightbox"></div>
+
 <script src="js/main.js"></script>
 <script>
-YHG.applyTheme('links');
-YHG.renderLink({
-    title: document.getElementById('lTitle'),
-    host: document.getElementById('lHost'),
-    hero: document.getElementById('lHero'),
-    note: document.getElementById('lNote'),
-    visit: document.getElementById('lVisit'),
-    support: document.getElementById('lSupport')
-});
+YHG.applyTheme('music');
+YHG.renderMusic(document.getElementById('music'));
+YHG.spotlight(document.getElementById('maskRoot'));
 </script>
+
 <script data-goatcounter="https://oingoboingo.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

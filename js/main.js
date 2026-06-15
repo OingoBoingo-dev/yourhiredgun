@@ -296,6 +296,88 @@ var YHG = (function () {
     });
   }
 
+  /* ---------- Music grid ---------- */
+  // returns { src, kind } for an embeddable player, or null (unknown -> open link)
+  function musicEmbedUrl(url) {
+    var s = String(url || '');
+    var m = s.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+    if (m) return { src: 'https://www.youtube.com/embed/' + m[1] + '?autoplay=1', kind: 'video' };
+    m = s.match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(track|album|playlist|artist|episode|show)\/([A-Za-z0-9]+)/);
+    if (m) return { src: 'https://open.spotify.com/embed/' + m[1] + '/' + m[2] + '?utm_source=generator', kind: 'audio' };
+    if (/soundcloud\.com\//.test(s)) return { src: 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(s) + '&auto_play=true&color=%23d9762b', kind: 'audio' };
+    return null;
+  }
+
+  function closeMusicLightbox(lb) {
+    lb.classList.remove('open');
+    lb.innerHTML = ''; // removing the iframe/audio stops playback
+  }
+
+  function renderMusic(el) {
+    getJSON('data/music.json').then(function (tracks) {
+      if (!tracks.length) {
+        el.innerHTML = '<p class="empty-note">No music yet &mdash; check back soon.</p>';
+        return;
+      }
+      var html = '';
+      tracks.slice().reverse().forEach(function (t, ri) {
+        var realIdx = tracks.length - 1 - ri;
+        var isFile = t.type === 'file';
+        var emb = isFile ? null : musicEmbedUrl(t.url);
+        var hasInline = isFile || !!emb || !!t.embedHtml;
+        var href = isFile ? t.src : t.url;
+        var host = isFile ? 'audio file' : hostOf(t.url);
+        html += '<a class="video-card music-card" href="' + esc(href) + '"' +
+          (!hasInline ? ' target="_blank" rel="noopener"' : '') +
+          ' data-idx="' + realIdx + '">' +
+          '<div class="vthumb">' +
+          (t.thumb ? '<img src="' + esc(t.thumb) + '" alt="' + esc(t.title) + '" loading="lazy">' : '') +
+          '<span class="play-badge">&#9654;</span></div>' +
+          '<div class="meta"><h3>' + esc(t.title) + '</h3>' +
+          (t.date ? '<div class="date">' + esc(t.date) + '</div>' : '') +
+          '<div class="count">' + esc(host) + '</div></div></a>';
+      });
+      el.innerHTML = html;
+
+      var lb = document.getElementById('lightbox');
+      el.querySelectorAll('.music-card').forEach(function (card) {
+        card.addEventListener('click', function (e) {
+          var t = tracks[Number(card.getAttribute('data-idx'))];
+          if (!t) return;
+          var isFile = t.type === 'file';
+          var emb = isFile ? null : musicEmbedUrl(t.url);
+          if (!isFile && !emb && !t.embedHtml) return; // unknown platform: follow the link
+          e.preventDefault();
+          if (!lb) return;
+          var inner;
+          if (isFile) {
+            inner = '<div class="music-shell file">' +
+              (t.thumb ? '<img class="music-cover" src="' + esc(t.thumb) + '" alt="">' : '') +
+              '<div class="music-title">' + esc(t.title) + '</div>' +
+              '<audio controls autoplay src="' + esc(t.src) + '"></audio></div>';
+          } else if (emb) {
+            inner = '<div class="music-shell ' + emb.kind + '">' +
+              '<iframe src="' + esc(emb.src) + '" allow="autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
+          } else {
+            inner = '<div class="music-shell raw">' + t.embedHtml + '</div>';
+          }
+          lb.innerHTML = inner;
+          lb.classList.add('open');
+        });
+      });
+      if (lb) {
+        lb.addEventListener('click', function (e) {
+          if (e.target === lb) closeMusicLightbox(lb);
+        });
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') closeMusicLightbox(lb);
+        });
+      }
+    }).catch(function () {
+      el.innerHTML = '<p class="empty-note">Could not load music.</p>';
+    });
+  }
+
   /* ---------- Single project page ---------- */
   function renderProject(titleEl, descEl, stackEl) {
     var id = new URLSearchParams(location.search).get('id');
@@ -348,5 +430,5 @@ var YHG = (function () {
     }
   }
 
-  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos };
+  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos, renderMusic: renderMusic };
 })();

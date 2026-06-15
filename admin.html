@@ -20,6 +20,7 @@
             <a href="about.html">Art Links</a>
             <a href="projects.html">Projects</a>
             <a href="videos.html">Videos</a>
+            <a href="music.html">Music</a>
         </div>
     </nav>
 
@@ -71,6 +72,7 @@
             <button class="active" data-tab="tabLinks">Art Links</button>
             <button data-tab="tabProjects">Projects</button>
             <button data-tab="tabVideos">Videos</button>
+            <button data-tab="tabMusic">Music</button>
             <button data-tab="tabTheme">Theme</button>
             <button data-tab="tabTraffic">Traffic</button>
         </div>
@@ -166,6 +168,47 @@
             <ul class="admin-list" id="vidList"></ul>
         </section>
 
+        <!-- ---- MUSIC ---- -->
+        <section id="tabMusic" class="admin-section">
+            <h2 class="section-h">Add music by URL</h2>
+            <form id="addMusUrlForm">
+                <div class="field">
+                    <label for="musUrl">Music URL</label>
+                    <input type="url" id="musUrl" placeholder="Spotify, Bandcamp, YouTube or SoundCloud link&hellip;" required>
+                    <div class="hint">Spotify, Bandcamp, SoundCloud and YouTube play right on the page. The cover art (and title, if you leave it blank below) is pulled automatically. Other platforms open in a new tab.</div>
+                </div>
+                <div class="field">
+                    <label for="musUrlTitle">Title (optional)</label>
+                    <input type="text" id="musUrlTitle" placeholder="Auto-filled from the platform if left blank">
+                </div>
+                <button class="btn primary" type="submit" id="addMusUrlBtn">Save music</button>
+            </form>
+
+            <hr class="divider">
+            <h2 class="section-h">Or upload an audio file</h2>
+            <form id="addMusFileForm">
+                <div class="field">
+                    <label for="musFileTitle">Title</label>
+                    <input type="text" id="musFileTitle" required>
+                </div>
+                <div class="field">
+                    <label for="musFile">Audio file (MP3, WAV, M4A, OGG)</label>
+                    <input type="file" id="musFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" required>
+                    <div class="hint">Up to 25&nbsp;MB &mdash; larger files are rejected. For anything bigger, host it on SoundCloud or Bandcamp and add it by URL instead.</div>
+                </div>
+                <div class="field">
+                    <label for="musCover">Cover image (optional)</label>
+                    <input type="file" id="musCover" accept="image/*">
+                    <div class="hint">Shown as the card thumbnail and behind the player. Resized automatically.</div>
+                </div>
+                <button class="btn primary" type="submit" id="addMusFileBtn">Upload music</button>
+            </form>
+
+            <hr class="divider">
+            <h2 class="section-h">Existing music</h2>
+            <ul class="admin-list" id="musList"></ul>
+        </section>
+
         <!-- ---- THEME ---- -->
         <section id="tabTheme" class="admin-section">
             <h2 class="section-h">Background &amp; font</h2>
@@ -176,6 +219,7 @@
                     <option value="links">Art Links</option>
                     <option value="projects">Projects</option>
                     <option value="videos">Videos</option>
+                    <option value="music">Music</option>
                 </select>
             </div>
             <div class="field">
@@ -213,7 +257,7 @@
                 <div class="tprev-text" id="thPrevText">
                     <h3>Your Hired Gun</h3>
                     <p>A collection of things I enjoy</p>
-                    <span>Art Links &middot; Projects &middot; Videos</span>
+                    <span>Art Links &middot; Projects &middot; Videos &middot; Music</span>
                 </div>
             </div>
             <p class="hint" style="margin:-6px 0 16px; color:var(--paper-dim); font-size:13px">Move your mouse over the preview &mdash; the blob behaves exactly like this on the live page. The font preview is the text in the box.</p>
