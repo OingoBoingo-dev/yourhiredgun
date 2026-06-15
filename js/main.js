@@ -430,5 +430,5 @@ var YHG = (function () {
     }
   }
 
-  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos, renderMusic: renderMusic };
+  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos, renderMusic: renderMusic, musicEmbedUrl: musicEmbedUrl };
 })();
