@@ -215,8 +215,10 @@ var YHG = (function () {
       var html = '';
       projects.slice().reverse().forEach(function (p) {
         var cover = p.images && p.images.length ? p.images[0] : '';
+        var coverName = p.names && p.names[cover];
         html += '<a class="project-card" href="project.html?id=' + encodeURIComponent(p.id) + '">' +
-          '<div class="thumb">' + (cover ? '<img src="' + esc(cover) + '" alt="' + esc(p.title) + '" loading="lazy">' : '') + '</div>' +
+          '<div class="thumb">' + (cover ? '<img src="' + esc(cover) + '" alt="' + esc(p.title) + '" loading="lazy">' +
+            (coverName ? '<div class="file-cap">' + esc(coverName) + '</div>' : '') : '') + '</div>' +
           '<div class="meta"><h3>' + esc(p.title) + '</h3>' +
           (p.date ? '<div class="date">' + esc(p.date) + '</div>' : '') +
           '<div class="count">' + (p.images ? p.images.length : 0) + ' image' + ((p.images || []).length === 1 ? '' : 's') +
@@ -261,6 +263,7 @@ var YHG = (function () {
           ' data-embed="' + esc(embed || '') + '" data-file="' + (isFile ? esc(v.src) : '') + '">' +
           '<div class="vthumb">' +
           (v.thumb ? '<img src="' + esc(v.thumb) + '" alt="' + esc(v.title) + '" loading="lazy">' : '') +
+          (isFile && v.filename ? '<div class="file-cap">' + esc(v.filename) + '</div>' : '') +
           '<span class="play-badge">&#9654;</span></div>' +
           '<div class="meta"><h3>' + esc(v.title) + '</h3>' +
           (v.date ? '<div class="date">' + esc(v.date) + '</div>' : '') +
@@ -332,6 +335,7 @@ var YHG = (function () {
           ' data-idx="' + realIdx + '">' +
           '<div class="vthumb">' +
           (t.thumb ? '<img src="' + esc(t.thumb) + '" alt="' + esc(t.title) + '" loading="lazy">' : '') +
+          (isFile && t.filename ? '<div class="file-cap">' + esc(t.filename) + '</div>' : '') +
           '<span class="play-badge">&#9654;</span></div>' +
           '<div class="meta"><h3>' + esc(t.title) + '</h3>' +
           (t.date ? '<div class="date">' + esc(t.date) + '</div>' : '') +
@@ -398,8 +402,10 @@ var YHG = (function () {
       }
       var html = '';
       (p.images || []).forEach(function (src, i) {
+        var nm = p.names && p.names[src];
         html += '<figure class="zoom-frame" data-full="' + esc(src) + '">' +
-          '<img src="' + esc(src) + '" alt="' + esc(p.title) + ' — image ' + (i + 1) + '" loading="lazy"></figure>';
+          '<img src="' + esc(src) + '" alt="' + esc(p.title) + ' — image ' + (i + 1) + '" loading="lazy">' +
+          (nm ? '<div class="file-cap">' + esc(nm) + '</div>' : '') + '</figure>';
       });
       stackEl.innerHTML = html;
       attachZoom(stackEl);

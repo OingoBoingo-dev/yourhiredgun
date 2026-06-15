@@ -122,6 +122,7 @@
                 <div class="field">
                     <label for="projExtra">Interactive page (optional)</label>
                     <input type="file" id="projExtra" accept=".html,.htm,text/html">
+                    <div class="thumb-preview" id="projExtraPreview"></div>
                     <div class="hint">A self-contained HTML file (like a visualizer). Visitors get an &ldquo;Open interactive version&rdquo; button on the project page. Keep it under 25&nbsp;MB &mdash; larger files are rejected (and would load slowly for visitors anyway).</div>
                 </div>
                 <button class="btn primary" type="submit" id="addProjBtn">Upload project</button>
@@ -158,6 +159,7 @@
                 <div class="field">
                     <label for="vidFile">MP4 file</label>
                     <input type="file" id="vidFile" accept="video/mp4,.mp4" required>
+                    <div class="thumb-preview" id="vidFilePreview"></div>
                     <div class="hint">Up to 25&nbsp;MB &mdash; larger files are rejected. For anything bigger, upload it to YouTube (unlisted works) and add it by URL instead. The thumbnail is grabbed from the first second of the video automatically.</div>
                 </div>
                 <button class="btn primary" type="submit" id="addVidFileBtn">Upload video</button>
@@ -194,11 +196,13 @@
                 <div class="field">
                     <label for="musFile">Audio file (MP3, WAV, M4A, OGG)</label>
                     <input type="file" id="musFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.flac" required>
+                    <div class="thumb-preview" id="musFilePreview"></div>
                     <div class="hint">Up to 25&nbsp;MB &mdash; larger files are rejected. For anything bigger, host it on SoundCloud or Bandcamp and add it by URL instead.</div>
                 </div>
                 <div class="field">
                     <label for="musCover">Cover image (optional)</label>
                     <input type="file" id="musCover" accept="image/*">
+                    <div class="thumb-preview" id="musCoverPreview"></div>
                     <div class="hint">Shown as the card thumbnail and behind the player. Resized automatically.</div>
                 </div>
                 <button class="btn primary" type="submit" id="addMusFileBtn">Upload music</button>

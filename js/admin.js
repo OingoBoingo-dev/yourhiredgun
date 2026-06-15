@@ -298,6 +298,49 @@
            String(d.getFullYear()).slice(2);
   }
 
+  /* ---------------- upload preview (shows each file's name, bottom-left) ---------------- */
+  // short type glyph for non-image files; null means "render an image thumbnail"
+  function fileGlyph(file) {
+    var t = (file.type || '') + ' ' + file.name.toLowerCase();
+    if (/^image\//.test(file.type) || /\.(jpe?g|png|gif|webp|bmp|svg)$/.test(t)) return null;
+    if (/audio|\.(mp3|wav|m4a|ogg|oga|flac|aac)$/.test(t)) return '♪';      // music note
+    if (/video|\.(mp4|mov|webm|mkv|avi)$/.test(t)) return '▶';              // play
+    if (/pdf|\.pdf$/.test(t)) return 'PDF';
+    if (/\.(html?|htm)$/.test(t)) return '</>';
+    if (/\.pptx?$/.test(t) || /presentation/.test(t)) return 'PPT';
+    if (/\.docx?$/.test(t) || /wordprocessing/.test(t)) return 'DOC';
+    if (/\.xlsx?$/.test(t) || /spreadsheet/.test(t)) return 'XLS';
+    return 'FILE';
+  }
+
+  // render selected files into a .thumb-preview container, each with its filename caption
+  function filePreview(container, files) {
+    if (!container) return;
+    container.innerHTML = '';
+    Array.from(files || []).forEach(function (file) {
+      var item = document.createElement('div');
+      item.className = 'up-item';
+      item.title = file.name;
+      var glyph = fileGlyph(file);
+      if (glyph === null) {
+        var img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        item.appendChild(img);
+      } else {
+        item.classList.add('file');
+        var g = document.createElement('span');
+        g.className = 'glyph';
+        g.textContent = glyph;
+        item.appendChild(g);
+      }
+      var cap = document.createElement('div');
+      cap.className = 'file-cap';
+      cap.textContent = file.name;
+      item.appendChild(cap);
+      container.appendChild(item);
+    });
+  }
+
   /* ================= LOGIN ================= */
   $('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
@@ -659,6 +702,7 @@
         URL.revokeObjectURL(url);
         th.pending = d;
         thPreview();
+        $('thImgNote').textContent = file.name + ' — ready. Press “Save theme” to publish it.';
       }).catch(function (err) { status(err.message, 'err'); });
     });
 
@@ -762,6 +806,7 @@
 
     // convert any new files (PDFs expand to one image per page)
     var items = [];
+    var addNames = [];
     var prep = Promise.resolve();
     addFiles.forEach(function (file) {
       prep = prep.then(function () {
@@ -769,9 +814,14 @@
           status('Reading PDF…', 'busy');
           return pdfToImages(file, function (n, total) {
             status('Converting PDF page ' + n + ' of ' + total + '…', 'busy');
-          }).then(function (pages) { pages.forEach(function (x) { items.push(x); }); });
+          }).then(function (pages) {
+            pages.forEach(function (x, idx) {
+              items.push(x);
+              addNames.push(pages.length > 1 ? file.name + ' (p ' + (idx + 1) + ')' : file.name);
+            });
+          });
         }
-        return fileToB64(file).then(function (r) { items.push(r); });
+        return fileToB64(file).then(function (r) { items.push(r); addNames.push(file.name); });
       });
     });
 
@@ -824,6 +874,10 @@
         p2.title = title;
         p2.description = desc;
         p2.images = (p2.images || []).filter(function (x) { return rmPaths.indexOf(x) === -1; }).concat(newPaths);
+        var nm = Object.assign({}, p2.names || {});
+        rmPaths.forEach(function (x) { delete nm[x]; });
+        newPaths.forEach(function (pth, i) { nm[pth] = addNames[i]; });
+        if (Object.keys(nm).length) p2.names = nm; else delete p2.names;
         if (intPath) p2.interactive = intPath;
         else if (rmInt) delete p2.interactive;
         return writeJsonFile('data/projects.json', f.data, 'Edit project: ' + title, f.sha);
@@ -884,7 +938,7 @@
         return ghPut(srcPath, b64, 'Add video: ' + title).then(function () {
           status('Saving video…', 'busy');
           return readJsonFile('data/videos.json').then(function (f) {
-            f.data.push({ type: 'file', title: title, src: srcPath, thumb: thumbPath, date: today() });
+            f.data.push({ type: 'file', title: title, src: srcPath, thumb: thumbPath, filename: file.name, date: today() });
             return writeJsonFile('data/videos.json', f.data, 'Add video: ' + title, f.sha);
           });
         });
@@ -892,6 +946,7 @@
     }).then(function () {
       status('Video uploaded. Live in about a minute.', 'ok');
       $('addVidFileForm').reset();
+      $('vidFilePreview').innerHTML = '';
       loadLists();
     }).catch(function (err) { status(err.message, 'err'); })
       .finally(function () { btn.disabled = false; });
@@ -1031,13 +1086,15 @@
       return ghPut(srcPath, b64, 'Add music: ' + title).then(function () {
         status('Saving music…', 'busy');
         return readJsonFile('data/music.json').then(function (f) {
-          f.data.push({ type: 'file', title: title, src: srcPath, thumb: thumbPath, date: today() });
+          f.data.push({ type: 'file', title: title, src: srcPath, thumb: thumbPath, filename: file.name, date: today() });
           return writeJsonFile('data/music.json', f.data, 'Add music: ' + title, f.sha);
         });
       });
     }).then(function () {
       status('Music uploaded. Live in about a minute.', 'ok');
       $('addMusFileForm').reset();
+      $('musFilePreview').innerHTML = '';
+      $('musCoverPreview').innerHTML = '';
       loadLists();
     }).catch(function (err) { status(err.message, 'err'); })
       .finally(function () { btn.disabled = false; });
@@ -1122,20 +1179,19 @@
 
   /* ================= ADD PROJECT ================= */
   $('projImages').addEventListener('change', function () {
-    var prev = $('projPreview');
-    prev.innerHTML = '';
-    Array.from($('projImages').files).forEach(function (file) {
-      if (isPdf(file)) {
-        var chip = document.createElement('span');
-        chip.className = 'pdf-chip';
-        chip.textContent = 'PDF · ' + file.name + ' (pages will be split automatically)';
-        prev.appendChild(chip);
-        return;
-      }
-      var img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      prev.appendChild(img);
-    });
+    filePreview($('projPreview'), $('projImages').files);
+  });
+  $('projExtra').addEventListener('change', function () {
+    filePreview($('projExtraPreview'), $('projExtra').files);
+  });
+  $('vidFile').addEventListener('change', function () {
+    filePreview($('vidFilePreview'), $('vidFile').files);
+  });
+  $('musFile').addEventListener('change', function () {
+    filePreview($('musFilePreview'), $('musFile').files);
+  });
+  $('musCover').addEventListener('change', function () {
+    filePreview($('musCoverPreview'), $('musCover').files);
   });
 
   $('addProjForm').addEventListener('submit', function (e) {
@@ -1150,6 +1206,7 @@
 
     // 1) turn every selected file into one or more images (PDFs expand to one per page)
     var items = []; // { b64, ext }
+    var names = []; // original filename per generated image (parallel to items)
     var prep = Promise.resolve();
     files.forEach(function (file) {
       prep = prep.then(function () {
@@ -1158,10 +1215,13 @@
           return pdfToImages(file, function (n, total) {
             status('Converting PDF page ' + n + ' of ' + total + '…', 'busy');
           }).then(function (pages) {
-            pages.forEach(function (p) { items.push(p); });
+            pages.forEach(function (p, idx) {
+              items.push(p);
+              names.push(pages.length > 1 ? file.name + ' (p ' + (idx + 1) + ')' : file.name);
+            });
           });
         }
-        return fileToB64(file).then(function (r) { items.push(r); });
+        return fileToB64(file).then(function (r) { items.push(r); names.push(file.name); });
       });
     });
 
@@ -1190,12 +1250,15 @@
     }).then(function (interactivePath) {
       status('Saving project…', 'busy');
       return readJsonFile('data/projects.json').then(function (f) {
+        var nameMap = {};
+        paths.forEach(function (pth, i) { nameMap[pth] = names[i]; });
         var rec = {
           id: slug,
           title: title,
           description: $('projDesc').value.trim(),
           date: today(),
-          images: paths
+          images: paths,
+          names: nameMap
         };
         if (interactivePath) rec.interactive = interactivePath;
         f.data.push(rec);
@@ -1205,6 +1268,7 @@
       status('Project saved with ' + paths.length + ' images. Live in about a minute.', 'ok');
       $('addProjForm').reset();
       $('projPreview').innerHTML = '';
+      $('projExtraPreview').innerHTML = '';
       loadLists();
     }).catch(function (err) { status(err.message, 'err'); })
       .finally(function () { btn.disabled = false; });
