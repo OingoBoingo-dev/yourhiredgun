@@ -1,9 +1,10 @@
 [
   {
     "type": "embed",
-    "title": "godspeedyoublackemperor.bandcamp.com/track/the-dead-flag-blues",
+    "title": "The Dead Flag Blues — Godspeed You! Black Emperor",
     "url": "https://godspeedyoublackemperor.bandcamp.com/track/the-dead-flag-blues",
-    "thumb": "",
-    "date": "06/15/26"
+    "thumb": "https://f4.bcbits.com/img/a3589746424_5.jpg",
+    "date": "06/15/26",
+    "embedHtml": "<iframe style=\"border:0;width:350px;height:442px;\" src=\"https://bandcamp.com/EmbeddedPlayer/track=1732199028/size=large/bgcol=181a1b/linkcol=d9762b/artwork=big/transparent=true/\" seamless><a href=\"https://godspeedyoublackemperor.bandcamp.com/track/the-dead-flag-blues\">The Dead Flag Blues by Godspeed You! Black Emperor</a></iframe>"
   }
 ]

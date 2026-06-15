@@ -242,16 +242,50 @@
       .catch(function () { return null; });
   }
 
-  // music metadata: noembed first (YouTube/SoundCloud/Bandcamp), Spotify's own oEmbed as a fallback
+  // merge two oEmbed-ish results, preferring fields already present in `a`
+  function mergeMeta(a, b) {
+    a = a || {}; b = b || {};
+    return {
+      title: a.title || b.title || '',
+      thumbnail_url: a.thumbnail_url || b.thumbnail_url || '',
+      html: a.html || b.html || ''
+    };
+  }
+
+  // reads a page's og:title / og:image via microlink (CORS-friendly) — the
+  // reliable last-resort for sites noembed can't resolve (e.g. Bandcamp).
+  function microlinkMeta(url) {
+    return fetch('https://api.microlink.io/?url=' + encodeURIComponent(url))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var d = j && j.data;
+        if (!d) return null;
+        return {
+          title: d.title || '',
+          thumbnail_url: (d.image && d.image.url) || (d.logo && d.logo.url) || '',
+          html: ''
+        };
+      })
+      .catch(function () { return null; });
+  }
+
+  // music metadata: noembed first (YouTube/SoundCloud/Bandcamp), then Spotify's
+  // own oEmbed, then microlink's og:image/title — so a flaky/unsupported lookup
+  // never leaves us with a blank thumbnail and a URL-slug title.
   function fetchMusicMeta(url) {
     return fetchOembed(url).then(function (info) {
-      if (info && (info.thumbnail_url || info.title || info.html)) return info;
-      if (/open\.spotify\.com\//.test(url)) {
-        return fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(url))
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .catch(function () { return null; });
-      }
-      return info;
+      if (info && info.thumbnail_url && info.title) return info;
+      var spotify = /open\.spotify\.com\//.test(url);
+      var next = spotify
+        ? fetch('https://open.spotify.com/oembed?url=' + encodeURIComponent(url))
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; })
+        : Promise.resolve(null);
+      return next.then(function (sp) {
+        var merged = mergeMeta(info, sp);
+        if (merged.thumbnail_url && merged.title) return merged;
+        return microlinkMeta(url).then(function (ml) { return mergeMeta(merged, ml); });
+      });
     });
   }
 

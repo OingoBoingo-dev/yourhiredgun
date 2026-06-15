@@ -467,6 +467,8 @@ body.spotlight-page .page {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--paper);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .video-card .meta .date {
   font-size: 12px;
@@ -477,6 +479,8 @@ body.spotlight-page .page {
   font-size: 12px;
   color: var(--paper-dim);
   margin-top: 6px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* video lightbox player */
