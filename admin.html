@@ -17,6 +17,7 @@
     <nav class="site-nav">
         <a class="brand" href="index.html">Your Hired Gun</a>
         <div class="links">
+            <a href="feed.html">Feed</a>
             <a href="about.html">Art Links</a>
             <a href="projects.html">Projects</a>
             <a href="videos.html">Videos</a>
@@ -73,6 +74,7 @@
             <button data-tab="tabProjects">Projects</button>
             <button data-tab="tabVideos">Videos</button>
             <button data-tab="tabMusic">Music</button>
+            <button data-tab="tabFeed">Feed</button>
             <button data-tab="tabTheme">Theme</button>
             <button data-tab="tabTraffic">Traffic</button>
         </div>
@@ -92,6 +94,18 @@
                 <div class="field">
                     <label for="linkNote">Note (optional)</label>
                     <input type="text" id="linkNote">
+                </div>
+                <div class="field">
+                    <label>Supporting links (optional)</label>
+                    <div id="linkSupList"></div>
+                    <button class="btn mini" data-add-sup-new type="button">+ Add supporting link</button>
+                    <div class="hint">Extra related links (e.g. a Wikipedia page) shown on this link&rsquo;s page.</div>
+                </div>
+                <div class="field">
+                    <label for="linkMedia">Attach media (optional)</label>
+                    <input type="file" id="linkMedia" accept="image/*,audio/*,video/mp4,.mp3,.wav,.m4a,.ogg,.mp4">
+                    <div class="thumb-preview" id="linkMediaPreview"></div>
+                    <div class="hint">An image, audio (MP3/WAV/M4A) or MP4 shown on the link&rsquo;s page. Up to 25&nbsp;MB &mdash; for bigger video use a YouTube URL instead.</div>
                 </div>
                 <button class="btn primary" type="submit" id="addLinkBtn">Save link</button>
             </form>
@@ -213,6 +227,39 @@
             <ul class="admin-list" id="musList"></ul>
         </section>
 
+        <!-- ---- FEED ---- -->
+        <section id="tabFeed" class="admin-section">
+            <h2 class="section-h">Feed page</h2>
+            <p class="page-sub" style="margin-top:-6px">The Feed combines every section into one stream. New sections appear here automatically.</p>
+            <div class="field">
+                <label for="feedTitleInput">Heading</label>
+                <input type="text" id="feedTitleInput" placeholder="Feed">
+            </div>
+            <div class="field">
+                <label for="feedIntroInput">Intro line</label>
+                <input type="text" id="feedIntroInput" placeholder="Everything in one place, newest first.">
+            </div>
+            <div class="field">
+                <label for="feedSort">Order</label>
+                <select id="feedSort">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="manual">Manual (use the arrows below)</option>
+                </select>
+            </div>
+
+            <h2 class="section-h">Sources</h2>
+            <div id="feedSources" class="field"></div>
+
+            <hr class="divider">
+            <h2 class="section-h">Posts</h2>
+            <p class="page-sub" style="margin-top:-6px">Untick a box to block a post from the Feed or from its own section page. Arrows set the manual order.</p>
+            <div id="feedItems"><p class="empty-note">Loading&hellip;</p></div>
+
+            <hr class="divider">
+            <button class="btn primary" id="feedSave" type="button">Save feed</button>
+        </section>
+
         <!-- ---- THEME ---- -->
         <section id="tabTheme" class="admin-section">
             <h2 class="section-h">Background &amp; font</h2>
@@ -220,6 +267,7 @@
                 <label for="thPage">Page</label>
                 <select id="thPage">
                     <option value="landing">Landing</option>
+                    <option value="feed">Feed</option>
                     <option value="links">Art Links</option>
                     <option value="projects">Projects</option>
                     <option value="videos">Videos</option>

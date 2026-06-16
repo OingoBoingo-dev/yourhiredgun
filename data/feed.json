@@ -1,0 +1,12 @@
+{
+  "title": "Feed",
+  "intro": "Everything in one place, newest first.",
+  "sort": "newest",
+  "order": [],
+  "sources": [
+    { "key": "projects", "label": "Project", "file": "data/projects.json", "page": "projects.html", "enabled": true },
+    { "key": "videos",   "label": "Video",   "file": "data/videos.json",   "page": "videos.html",   "enabled": true },
+    { "key": "music",    "label": "Music",   "file": "data/music.json",     "page": "music.html",     "enabled": true },
+    { "key": "links",    "label": "Link",    "file": "data/links.json",     "page": "about.html",     "enabled": true }
+  ]
+}

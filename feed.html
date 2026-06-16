@@ -4,16 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="author" content="Harper Shaw">
-    <meta name="description" content="Videos by Harper Shaw">
-    <title>Videos — Your Hired Gun</title>
+    <meta name="description" content="A combined feed of everything by Harper Shaw">
+    <title>Feed — Your Hired Gun</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="Profile Photo.png" type="image/png">
 </head>
-<body class="videos spotlight-page">
-
+<body class="projectsbg spotlight-page">
     <!-- full-color image (revealed through the spotlight) -->
     <div class="bg-layer bg-color" aria-hidden="true"></div>
     <!-- grayscale layer; three nested masks form an irregular morphing hole -->
@@ -30,18 +29,18 @@
     <nav class="site-nav">
         <a class="brand" href="index.html">Your Hired Gun</a>
         <div class="links">
-            <a href="feed.html">Feed</a>
+            <a href="feed.html" class="active">Feed</a>
             <a href="about.html">Art Links</a>
             <a href="projects.html">Projects</a>
-            <a href="videos.html" class="active">Videos</a>
+            <a href="videos.html">Videos</a>
             <a href="music.html">Music</a>
         </div>
     </nav>
 
-    <h1 class="page-title">Videos</h1>
-    <p class="page-sub">Moving pictures. Click a card to watch.</p>
+    <h1 class="page-title" id="feedTitle">Feed</h1>
+    <p class="page-sub" id="feedIntro">Everything in one place, newest first.</p>
 
-    <div id="videos" class="video-grid"><p class="empty-note">Loading&hellip;</p></div>
+    <div id="feed" class="feed-grid"></div>
 
     <footer class="site-footer">
         <span>&lt;&lt;&lt;&copy; Harper Shaw 2026&gt;&gt;&gt;</span>
@@ -50,15 +49,18 @@
 
 </div>
 
+<!-- shared lightbox (videos/music play inline straight from the feed) -->
 <div class="lightbox" id="lightbox"></div>
 
 <script src="js/main.js?v=202606151920"></script>
 <script>
-YHG.applyTheme('videos');
-YHG.renderVideos(document.getElementById('videos'));
+YHG.applyTheme('feed');
+YHG.renderFeed(document.getElementById('feed'), {
+  titleEl: document.getElementById('feedTitle'),
+  introEl: document.getElementById('feedIntro')
+});
 YHG.spotlight(document.getElementById('maskRoot'));
 </script>
-
 <script data-goatcounter="https://oingoboingo.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

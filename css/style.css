@@ -328,16 +328,28 @@ body.artlinks .bg-layer {
   margin-top: 8px;
 }
 
-.project-card {
+/* ---- shared card chrome (projects / videos+music / feed) ---- */
+.project-card, .video-card, .post-card {
   text-decoration: none;
   display: block;
   border: 1px solid var(--line);
   background: var(--ink-soft);
   transition: border-color 0.25s ease, transform 0.25s ease;
 }
-.project-card:hover {
+.project-card:hover, .video-card:hover, .post-card:hover {
   border-color: var(--ember);
   transform: translateY(-4px);
+}
+.project-card .thumb img, .video-card .vthumb img, .post-card .post-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.85);
+  transition: transform 0.5s ease, filter 0.4s ease;
+}
+.project-card:hover .thumb img, .video-card:hover .vthumb img, .post-card:hover .post-thumb img {
+  transform: scale(1.08);
+  filter: grayscale(0);
 }
 
 .project-card .thumb {
@@ -345,17 +357,6 @@ body.artlinks .bg-layer {
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: #000;
-}
-.project-card .thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(0.85);
-  transition: transform 0.5s ease, filter 0.4s ease;
-}
-.project-card:hover .thumb img {
-  transform: scale(1.08);
-  filter: grayscale(0);
 }
 
 .project-card .meta { padding: 16px 18px 18px; }
@@ -423,18 +424,7 @@ body.spotlight-page .page {
   margin-top: 8px;
 }
 
-.video-card {
-  text-decoration: none;
-  display: block;
-  border: 1px solid var(--line);
-  background: var(--ink-soft);
-  transition: border-color 0.25s ease, transform 0.25s ease;
-  cursor: pointer;
-}
-.video-card:hover {
-  border-color: var(--ember);
-  transform: translateY(-4px);
-}
+.video-card { cursor: pointer; } /* base/hover/thumb-img: see shared card chrome above */
 
 .video-card .vthumb {
   position: relative;
@@ -442,34 +432,22 @@ body.spotlight-page .page {
   overflow: hidden;
   background: #000;
 }
-.video-card .vthumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: grayscale(0.85);
-  transition: transform 0.5s ease, filter 0.4s ease;
-}
-.video-card:hover .vthumb img {
-  transform: scale(1.08);
-  filter: grayscale(0);
-}
-.video-card .play-badge {
+.video-card .play-badge, .post-card .play-badge {
   position: absolute;
   top: 50%; left: 50%;
   transform: translate(-50%, -50%);
-  width: 54px; height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding-left: 4px;
-  font-size: 18px;
   color: var(--paper);
   background: rgba(8, 6, 8, 0.65);
   border: 1px solid var(--paper-dim);
   border-radius: 50%;
   transition: border-color 0.25s ease, color 0.25s ease;
 }
-.video-card:hover .play-badge { border-color: var(--ember); color: var(--ember); }
+.video-card:hover .play-badge, .post-card:hover .play-badge { border-color: var(--ember); color: var(--ember); }
+.video-card .play-badge { width: 54px; height: 54px; font-size: 18px; }
 
 .video-card .meta { padding: 16px 18px 18px; }
 .video-card .meta h3 {
@@ -852,6 +830,8 @@ h2.section-h {
   min-height: 60px;
 }
 .link-hero img { display: block; width: 100%; }
+.link-hero video { display: block; width: 100%; }
+.link-hero audio { display: block; width: 100%; margin-top: 4px; }
 .link-hero a { display: block; line-height: 0; }
 .link-visit { margin: 22px 0 34px; }
 
@@ -870,4 +850,4 @@ h2.section-h {
   cursor: crosshair;
 }
 .tprev .bg-layer, .tprev .mask-wrap, .tprev .bg-vignette { position: absolute; inset: 0; }
-.tprev .bg-color { 
+.tprev .bg-color

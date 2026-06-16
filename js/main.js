@@ -118,6 +118,7 @@ var YHG = (function () {
       // group by date, newest group last-added first
       var groups = {}, order = [];
       links.forEach(function (l, i) {
+        if ((l.hide || []).indexOf('links') !== -1) return; // blocked from this page
         var d = l.date || '';
         if (!groups[d]) { groups[d] = []; order.push(d); }
         groups[d].push({ l: l, i: i });
@@ -172,6 +173,22 @@ var YHG = (function () {
     heroEl.appendChild(a);
   }
 
+  // attached upload (image / audio / video) shown in the hero slot
+  function renderLinkMedia(m, heroEl) {
+    function abs(p) { return /^(https?:)?\//.test(p) ? p : '/' + p; }
+    var html;
+    if (m.kind === 'image') {
+      html = '<img src="' + esc(abs(m.src)) + '" alt="' + esc(m.filename || '') + '" loading="lazy">';
+    } else if (m.kind === 'audio') {
+      html = '<audio controls preload="metadata" src="' + esc(abs(m.src)) + '"></audio>';
+    } else if (m.kind === 'video') {
+      html = '<video controls playsinline preload="metadata"' +
+        (m.thumb ? ' poster="' + esc(abs(m.thumb)) + '"' : '') +
+        ' src="' + esc(abs(m.src)) + '"></video>';
+    } else { heroEl.style.display = 'none'; return; }
+    heroEl.innerHTML = html;
+  }
+
   function renderLink(els) {
     var i = parseInt(new URLSearchParams(location.search).get('i'), 10);
     getJSON('data/links.json').then(function (links) {
@@ -189,7 +206,11 @@ var YHG = (function () {
       els.note.textContent = l.note || '';
       if (!l.note) els.note.style.display = 'none';
       els.visit.href = l.url;
-      linkPreview(l.url, els.hero);
+      if (l.media && l.media.src) {
+        renderLinkMedia(l.media, els.hero);
+      } else {
+        linkPreview(l.url, els.hero);
+      }
       var sup = l.links || [];
       if (sup.length) {
         var html = '<h3 class="link-group-date">Supporting links</h3><ul class="link-list">';
@@ -214,6 +235,7 @@ var YHG = (function () {
       }
       var html = '';
       projects.slice().reverse().forEach(function (p) {
+        if ((p.hide || []).indexOf('projects') !== -1) return; // blocked from this page
         var cover = p.images && p.images.length ? p.images[0] : '';
         var coverName = p.names && p.names[cover];
         html += '<a class="project-card" href="project.html?id=' + encodeURIComponent(p.id) + '">' +
@@ -231,7 +253,10 @@ var YHG = (function () {
     });
   }
 
-  /* ---------- Videos grid ---------- */
+  /* ---------- Videos / Music grids (shared) ----------
+     Both are a grid of cards that open an inline lightbox player; only the
+     embed resolver and the player markup differ, so they share renderMediaGrid. */
+
   // returns an embeddable player URL for known platforms, or null
   function videoEmbedUrl(url) {
     var m = String(url || '').match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
@@ -241,65 +266,6 @@ var YHG = (function () {
     return null;
   }
 
-  function closeVideoLightbox(lb) {
-    lb.classList.remove('open');
-    lb.innerHTML = ''; // removing the iframe/video stops playback
-  }
-
-  function renderVideos(el) {
-    getJSON('data/videos.json').then(function (videos) {
-      if (!videos.length) {
-        el.innerHTML = '<p class="empty-note">No videos yet &mdash; check back soon.</p>';
-        return;
-      }
-      var html = '';
-      videos.slice().reverse().forEach(function (v) {
-        var isFile = v.type === 'file';
-        var embed = isFile ? null : videoEmbedUrl(v.url);
-        var href = isFile ? v.src : v.url;
-        var host = isFile ? 'video' : hostOf(v.url);
-        html += '<a class="video-card" href="' + esc(href) + '"' +
-          (!isFile && !embed ? ' target="_blank" rel="noopener"' : '') +
-          ' data-embed="' + esc(embed || '') + '" data-file="' + (isFile ? esc(v.src) : '') + '">' +
-          '<div class="vthumb">' +
-          (v.thumb ? '<img src="' + esc(v.thumb) + '" alt="' + esc(v.title) + '" loading="lazy">' : '') +
-          (isFile && v.filename ? '<div class="file-cap">' + esc(v.filename) + '</div>' : '') +
-          '<span class="play-badge">&#9654;</span></div>' +
-          '<div class="meta"><h3>' + esc(v.title) + '</h3>' +
-          (v.date ? '<div class="date">' + esc(v.date) + '</div>' : '') +
-          '<div class="count">' + esc(host) + '</div></div></a>';
-      });
-      el.innerHTML = html;
-
-      var lb = document.getElementById('lightbox');
-      el.querySelectorAll('.video-card').forEach(function (card) {
-        card.addEventListener('click', function (e) {
-          var file = card.getAttribute('data-file');
-          var embed = card.getAttribute('data-embed');
-          if (!file && !embed) return; // unknown platform: follow the link in a new tab
-          e.preventDefault();
-          if (!lb) return;
-          lb.innerHTML = '<div class="video-shell">' + (file
-            ? '<video controls autoplay playsinline src="' + esc(file) + '"></video>'
-            : '<iframe src="' + esc(embed) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>') +
-            '</div>';
-          lb.classList.add('open');
-        });
-      });
-      if (lb) {
-        lb.addEventListener('click', function (e) {
-          if (e.target === lb) closeVideoLightbox(lb);
-        });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape') closeVideoLightbox(lb);
-        });
-      }
-    }).catch(function () {
-      el.innerHTML = '<p class="empty-note">Could not load videos.</p>';
-    });
-  }
-
-  /* ---------- Music grid ---------- */
   // returns { src, kind } for an embeddable player, or null (unknown -> open link)
   function musicEmbedUrl(url) {
     var s = String(url || '');
@@ -311,74 +277,233 @@ var YHG = (function () {
     return null;
   }
 
-  function closeMusicLightbox(lb) {
+  function closeLightbox(lb) {
     lb.classList.remove('open');
-    lb.innerHTML = ''; // removing the iframe/audio stops playback
+    lb.innerHTML = ''; // removing the iframe/video/audio stops playback
   }
 
-  function renderMusic(el) {
-    getJSON('data/music.json').then(function (tracks) {
-      if (!tracks.length) {
-        el.innerHTML = '<p class="empty-note">No music yet &mdash; check back soon.</p>';
-        return;
-      }
+  // background-click + Escape to close; wired once per lightbox element
+  function wireLightbox(lb) {
+    if (!lb || lb._wired) return;
+    lb._wired = true;
+    lb.addEventListener('click', function (e) { if (e.target === lb) closeLightbox(lb); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLightbox(lb); });
+  }
+
+  // opts: { pageKey, cardClass, fileHost, emptyMsg, errMsg, inlineOf(item,isFile), player(item,isFile) }
+  function renderMediaGrid(el, path, opts) {
+    getJSON(path).then(function (rows) {
+      if (!rows.length) { el.innerHTML = '<p class="empty-note">' + opts.emptyMsg + '</p>'; return; }
       var html = '';
-      tracks.slice().reverse().forEach(function (t, ri) {
-        var realIdx = tracks.length - 1 - ri;
-        var isFile = t.type === 'file';
-        var emb = isFile ? null : musicEmbedUrl(t.url);
-        var hasInline = isFile || !!emb || !!t.embedHtml;
-        var href = isFile ? t.src : t.url;
-        var host = isFile ? 'audio file' : hostOf(t.url);
-        html += '<a class="video-card music-card" href="' + esc(href) + '"' +
-          (!hasInline ? ' target="_blank" rel="noopener"' : '') +
-          ' data-idx="' + realIdx + '">' +
+      for (var i = rows.length - 1; i >= 0; i--) { // newest first
+        var item = rows[i];
+        if ((item.hide || []).indexOf(opts.pageKey) !== -1) continue; // blocked from this page
+        var isFile = item.type === 'file';
+        var inline = opts.inlineOf(item, isFile);
+        var href = isFile ? (item.src || '') : (item.url || '');
+        var host = isFile ? opts.fileHost : hostOf(item.url);
+        html += '<a class="' + opts.cardClass + '" href="' + esc(href) + '"' +
+          (!inline ? ' target="_blank" rel="noopener"' : '') +
+          ' data-idx="' + i + '">' +
           '<div class="vthumb">' +
-          (t.thumb ? '<img src="' + esc(t.thumb) + '" alt="' + esc(t.title) + '" loading="lazy">' : '') +
-          (isFile && t.filename ? '<div class="file-cap">' + esc(t.filename) + '</div>' : '') +
+          (item.thumb ? '<img src="' + esc(item.thumb) + '" alt="' + esc(item.title) + '" loading="lazy">' : '') +
+          (isFile && item.filename ? '<div class="file-cap">' + esc(item.filename) + '</div>' : '') +
           '<span class="play-badge">&#9654;</span></div>' +
-          '<div class="meta"><h3>' + esc(t.title) + '</h3>' +
-          (t.date ? '<div class="date">' + esc(t.date) + '</div>' : '') +
+          '<div class="meta"><h3>' + esc(item.title) + '</h3>' +
+          (item.date ? '<div class="date">' + esc(item.date) + '</div>' : '') +
           '<div class="count">' + esc(host) + '</div></div></a>';
-      });
+      }
       el.innerHTML = html;
 
       var lb = document.getElementById('lightbox');
-      el.querySelectorAll('.music-card').forEach(function (card) {
+      el.querySelectorAll('a[data-idx]').forEach(function (card) {
         card.addEventListener('click', function (e) {
-          var t = tracks[Number(card.getAttribute('data-idx'))];
-          if (!t) return;
-          var isFile = t.type === 'file';
-          var emb = isFile ? null : musicEmbedUrl(t.url);
-          if (!isFile && !emb && !t.embedHtml) return; // unknown platform: follow the link
+          var item = rows[Number(card.getAttribute('data-idx'))];
+          if (!item) return;
+          var inner = opts.player(item, item.type === 'file');
+          if (inner == null) return; // unknown platform: follow the link in a new tab
           e.preventDefault();
           if (!lb) return;
-          var inner;
-          if (isFile) {
-            inner = '<div class="music-shell file">' +
-              (t.thumb ? '<img class="music-cover" src="' + esc(t.thumb) + '" alt="">' : '') +
-              '<div class="music-title">' + esc(t.title) + '</div>' +
-              '<audio controls autoplay src="' + esc(t.src) + '"></audio></div>';
-          } else if (emb) {
-            inner = '<div class="music-shell ' + emb.kind + '">' +
-              '<iframe src="' + esc(emb.src) + '" allow="autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
-          } else {
-            inner = '<div class="music-shell raw">' + t.embedHtml + '</div>';
-          }
           lb.innerHTML = inner;
           lb.classList.add('open');
         });
       });
-      if (lb) {
-        lb.addEventListener('click', function (e) {
-          if (e.target === lb) closeMusicLightbox(lb);
-        });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape') closeMusicLightbox(lb);
-        });
-      }
+      wireLightbox(lb);
     }).catch(function () {
-      el.innerHTML = '<p class="empty-note">Could not load music.</p>';
+      el.innerHTML = '<p class="empty-note">' + opts.errMsg + '</p>';
+    });
+  }
+
+  function renderVideos(el) {
+    renderMediaGrid(el, 'data/videos.json', {
+      pageKey: 'videos',
+      cardClass: 'video-card',
+      fileHost: 'video',
+      emptyMsg: 'No videos yet &mdash; check back soon.',
+      errMsg: 'Could not load videos.',
+      inlineOf: function (item, isFile) { return isFile || !!videoEmbedUrl(item.url); },
+      player: function (item, isFile) {
+        var embed = isFile ? null : videoEmbedUrl(item.url);
+        if (!isFile && !embed) return null;
+        return '<div class="video-shell">' + (isFile
+          ? '<video controls autoplay playsinline src="' + esc(item.src) + '"></video>'
+          : '<iframe src="' + esc(embed) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>') +
+          '</div>';
+      }
+    });
+  }
+
+  function renderMusic(el) {
+    renderMediaGrid(el, 'data/music.json', {
+      pageKey: 'music',
+      cardClass: 'video-card music-card',
+      fileHost: 'audio file',
+      emptyMsg: 'No music yet &mdash; check back soon.',
+      errMsg: 'Could not load music.',
+      inlineOf: function (item, isFile) { return isFile || !!musicEmbedUrl(item.url) || !!item.embedHtml; },
+      player: function (item, isFile) {
+        var emb = isFile ? null : musicEmbedUrl(item.url);
+        if (!isFile && !emb && !item.embedHtml) return null;
+        if (isFile) return '<div class="music-shell file">' +
+          (item.thumb ? '<img class="music-cover" src="' + esc(item.thumb) + '" alt="">' : '') +
+          '<div class="music-title">' + esc(item.title) + '</div>' +
+          '<audio controls autoplay src="' + esc(item.src) + '"></audio></div>';
+        if (emb) return '<div class="music-shell ' + emb.kind + '">' +
+          '<iframe src="' + esc(emb.src) + '" allow="autoplay; encrypted-media; clipboard-write; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>';
+        return '<div class="music-shell raw">' + item.embedHtml + '</div>';
+      }
+    });
+  }
+
+  /* ---------- Combined feed ----------
+     Aggregates every content source into one date-sorted stream. New sources
+     just need an entry in data/feed.json plus (optionally) a branch in
+     feedEntry() — everything else (sorting, blocking, cards) is generic. */
+
+  var DEFAULT_FEED_SOURCES = [
+    { key: 'projects', label: 'Project', file: 'data/projects.json', page: 'projects.html', enabled: true },
+    { key: 'videos',   label: 'Video',   file: 'data/videos.json',   page: 'videos.html',   enabled: true },
+    { key: 'music',    label: 'Music',   file: 'data/music.json',     page: 'music.html',     enabled: true },
+    { key: 'links',    label: 'Link',    file: 'data/links.json',     page: 'about.html',     enabled: true }
+  ];
+
+  // dates are stored as MM/DD/YY — turn one into a sortable timestamp
+  function feedDateVal(s) {
+    var m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if (!m) return 0;
+    var y = +m[3]; if (y < 100) y += 2000;
+    return new Date(y, (+m[1]) - 1, +m[2]).getTime();
+  }
+
+  // a stable identifier so admin can block / order an item across rebuilds
+  function feedKey(srcKey, item, i) {
+    var base = item.id || item.url || item.src || (item.title + '|' + (item.date || '') + '|' + i);
+    return srcKey + '::' + base;
+  }
+
+  // normalize one raw record into a card-ready entry
+  function feedEntry(src, item, i) {
+    var e = {
+      kind: src.key,
+      label: src.label || src.key,
+      title: item.title || '(untitled)',
+      date: item.date || '',
+      dateVal: feedDateVal(item.date),
+      key: feedKey(src.key, item, i),
+      hide: item.hide || [],
+      thumb: '',
+      sub: '',
+      href: src.page || '#',
+      external: false,
+      play: false
+    };
+    if (src.key === 'projects') {
+      e.thumb = (item.images && item.images.length) ? item.images[0] : '';
+      e.href = 'project.html?id=' + encodeURIComponent(item.id);
+      var n = (item.images || []).length;
+      e.sub = n + ' image' + (n === 1 ? '' : 's') + (item.interactive ? ' · interactive' : '');
+    } else if (src.key === 'videos') {
+      e.thumb = item.thumb || '';
+      e.sub = (item.type === 'file') ? 'video' : hostOf(item.url);
+      e.href = 'videos.html';
+      e.play = true;
+    } else if (src.key === 'music') {
+      e.thumb = item.thumb || '';
+      e.sub = (item.type === 'file') ? 'audio file' : hostOf(item.url);
+      e.href = 'music.html';
+      e.play = true;
+    } else if (src.key === 'links') {
+      e.sub = hostOf(item.url);
+      e.href = 'link.html?i=' + i;
+    } else {
+      // generic future source — best-effort thumbnail + open-in-place
+      e.thumb = item.thumb || (item.images && item.images[0]) || '';
+      e.sub = item.host || hostOf(item.url) || '';
+      e.href = src.page || item.url || '#';
+      e.external = /^https?:/.test(e.href);
+    }
+    return e;
+  }
+
+  function feedSort(entries, mode, order) {
+    if (mode === 'manual' && order && order.length) {
+      var idx = {};
+      order.forEach(function (k, n) { idx[k] = n; });
+      return entries.slice().sort(function (a, b) {
+        var ia = (a.key in idx) ? idx[a.key] : Infinity;
+        var ib = (b.key in idx) ? idx[b.key] : Infinity;
+        if (ia !== ib) return ia - ib;
+        return b.dateVal - a.dateVal; // leftovers: newest first
+      });
+    }
+    var dir = (mode === 'oldest') ? 1 : -1;
+    return entries.slice().sort(function (a, b) { return dir * (a.dateVal - b.dateVal); });
+  }
+
+  function feedCard(e) {
+    var thumb = e.thumb
+      ? '<img src="' + esc(e.thumb) + '" alt="' + esc(e.title) + '" loading="lazy">'
+      : '<div class="post-noimg">' + esc(e.label) + '</div>';
+    if (e.play) thumb += '<span class="play-badge">&#9654;</span>';
+    thumb += '<span class="post-badge post-' + esc(e.kind) + '">' + esc(e.label) + '</span>';
+    return '<a class="post-card" href="' + esc(e.href) + '"' +
+      (e.external ? ' target="_blank" rel="noopener"' : '') +
+      ' data-key="' + esc(e.key) + '">' +
+      '<div class="post-thumb">' + thumb + '</div>' +
+      '<div class="meta"><h3>' + esc(e.title) + '</h3>' +
+      (e.date ? '<div class="date">' + esc(e.date) + '</div>' : '') +
+      '<div class="count">' + esc(e.sub || '') + '</div>' +
+      '</div></a>';
+  }
+
+  function renderFeed(el, opts) {
+    opts = opts || {};
+    getJSON('data/feed.json').catch(function () { return {}; }).then(function (cfg) {
+      cfg = cfg || {};
+      if (opts.titleEl && cfg.title) opts.titleEl.textContent = cfg.title;
+      if (opts.introEl && cfg.intro != null) opts.introEl.textContent = cfg.intro;
+      var sources = (cfg.sources && cfg.sources.length ? cfg.sources : DEFAULT_FEED_SOURCES)
+        .filter(function (s) { return s.enabled !== false; });
+      return Promise.all(sources.map(function (s) {
+        return getJSON(s.file)
+          .then(function (rows) { return { s: s, rows: rows || [] }; })
+          .catch(function () { return { s: s, rows: [] }; });
+      })).then(function (sets) {
+        var entries = [];
+        sets.forEach(function (set) {
+          set.rows.forEach(function (item, i) {
+            var e = feedEntry(set.s, item, i);
+            if ((e.hide || []).indexOf('feed') !== -1) return; // blocked from the feed
+            entries.push(e);
+          });
+        });
+        entries = feedSort(entries, cfg.sort || 'newest', cfg.order);
+        el.innerHTML = entries.length
+          ? entries.map(feedCard).join('')
+          : '<p class="empty-note">Nothing here yet.</p>';
+      });
+    }).catch(function () {
+      el.innerHTML = '<p class="empty-note">Could not load the feed.</p>';
     });
   }
 
@@ -436,5 +561,7 @@ var YHG = (function () {
     }
   }
 
-  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos, renderMusic: renderMusic, musicEmbedUrl: musicEmbedUrl };
+  return { applyTheme: applyTheme, spotlight: spotlight, renderLinks: renderLinks, renderLink: renderLink, renderProjects: renderProjects, renderProject: renderProject, renderVideos: renderVideos, renderMusic: renderMusic, renderFeed: renderFeed, musicEmbedUrl: musicEmbedUrl,
+    // shared helpers reused by admin.js (admin.html loads main.js first; keep in sync)
+    esc: esc, hostOf: hostOf, feedDateVal: feedDateVal, feedKey: feedKey, DEFAULT_FEED_SOURCES: DEFAULT_FEED_SOURCES };
 })();

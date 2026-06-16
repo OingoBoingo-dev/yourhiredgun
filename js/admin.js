@@ -13,86 +13,21 @@
   var $ = function (id) { return document.getElementById(id); };
   var enc = new TextEncoder();
 
-  // Pure-JS SHA-256 over a binary string. Used only as a fallback when the
-  // Web Crypto API isn't available (e.g. the page is opened over plain
-  // http:// or file://, where crypto.subtle is undefined). Verified to match
-  // crypto.subtle / Node's crypto for ASCII and UTF-8 input.
-  function _sha256bin(ascii) {
-    function rotr(n, x) { return (x >>> n) | (x << (32 - n)); }
-    var mathPow = Math.pow, maxWord = mathPow(2, 32), result = '';
-    var words = [], asciiBitLength = ascii.length * 8;
-    var hash = _sha256bin.h = _sha256bin.h || [];
-    var k = _sha256bin.k = _sha256bin.k || [];
-    var primeCounter = k.length, isComposite = {};
-    for (var candidate = 2; primeCounter < 64; candidate++) {
-      if (!isComposite[candidate]) {
-        for (var i = 0; i < 313; i += candidate) isComposite[i] = candidate;
-        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
-        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
-      }
-    }
-    ascii += '\x80';
-    while (ascii.length % 64 - 56) ascii += '\x00';
-    for (var i = 0; i < ascii.length; i++) {
-      var j = ascii.charCodeAt(i);
-      if (j >> 8) return;
-      words[i >> 2] |= j << ((3 - i) % 4) * 8;
-    }
-    words[words.length] = (asciiBitLength / maxWord) | 0;
-    words[words.length] = asciiBitLength;
-    for (var j = 0; j < words.length;) {
-      var w = words.slice(j, j += 16);
-      var oldHash = hash;
-      hash = hash.slice(0, 8);
-      for (var i = 0; i < 64; i++) {
-        var w15 = w[i - 15], w2 = w[i - 2];
-        var a = hash[0], e = hash[4];
-        var temp1 = hash[7]
-          + (rotr(6, e) ^ rotr(11, e) ^ rotr(25, e))
-          + ((e & hash[5]) ^ (~e & hash[6]))
-          + k[i]
-          + (w[i] = (i < 16) ? w[i] : (
-              w[i - 16]
-              + (rotr(7, w15) ^ rotr(18, w15) ^ (w15 >>> 3))
-              + w[i - 7]
-              + (rotr(17, w2) ^ rotr(19, w2) ^ (w2 >>> 10))
-            ) | 0);
-        var temp2 = (rotr(2, a) ^ rotr(13, a) ^ rotr(22, a))
-          + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
-        hash = [(temp1 + temp2) | 0].concat(hash);
-        hash[4] = (hash[4] + temp1) | 0;
-      }
-      for (var i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
-    }
-    for (var i = 0; i < 8; i++)
-      for (var j = 3; j + 1; j--) {
-        var b = (hash[i] >> (j * 8)) & 255;
-        result += ((b < 16) ? 0 : '') + b.toString(16);
-      }
-    return result;
-  }
-
+  // Web Crypto SHA-256. The live site is HTTPS (GitHub Pages), so crypto.subtle
+  // is always present; if the admin page is ever opened over file://, hosting it
+  // on the live URL is the fix rather than carrying a hand-rolled hash.
   function sha256(str) {
-    var bytes = enc.encode(str);
-    if (typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest) {
-      return crypto.subtle.digest('SHA-256', bytes).then(function (buf) {
-        return Array.from(new Uint8Array(buf)).map(function (b) {
-          return b.toString(16).padStart(2, '0');
-        }).join('');
-      });
+    if (!(typeof crypto !== 'undefined' && crypto.subtle && crypto.subtle.digest)) {
+      return Promise.reject(new Error('Secure context required — open this page over https://, not file://.'));
     }
-    // No Web Crypto (insecure context) — hash the UTF-8 bytes in pure JS so
-    // login still works instead of silently doing nothing.
-    var bin = '';
-    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-    return Promise.resolve(_sha256bin(bin));
+    return crypto.subtle.digest('SHA-256', enc.encode(str)).then(function (buf) {
+      return Array.from(new Uint8Array(buf)).map(function (b) {
+        return b.toString(16).padStart(2, '0');
+      }).join('');
+    });
   }
 
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  var esc = YHG.esc;  // shared with main.js (loaded first)
 
   /* ---------------- status bar ---------------- */
   function status(msg, kind) {
@@ -569,21 +504,99 @@
   }
 
   /* ================= ADD LINK ================= */
+  // supporting-link rows on the Add form (same row markup as the edit panel)
+  $('addLinkForm').addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.hasAttribute('data-add-sup-new')) {
+      $('linkSupList').insertAdjacentHTML('beforeend', supRowHtml());
+    } else if (t.hasAttribute('data-rm-sup')) {
+      t.closest('.sup-row').remove();
+    }
+  });
+
+  function collectSupRows(scope) {
+    var sup = [];
+    scope.querySelectorAll('.sup-row').forEach(function (row) {
+      var su = row.querySelector('.ef-sup-url').value.trim();
+      var st = row.querySelector('.ef-sup-title').value.trim();
+      if (su) sup.push({ title: st || su, url: su });
+    });
+    return sup;
+  }
+
+  // upload one media file attached to a link -> { kind, src, filename, thumb? }
+  function uploadLinkMedia(file, slug) {
+    var name = file.name.toLowerCase();
+    if (/^image\//.test(file.type) || /\.(jpe?g|png|gif|webp|bmp|svg)$/.test(name)) {
+      return fileToB64(file).then(function (o) {
+        var path = 'images/links/' + slug + '.' + o.ext;
+        return ghPut(path, o.b64, 'Add link image: ' + slug).then(function () {
+          return { kind: 'image', src: path, filename: file.name };
+        });
+      });
+    }
+    if (/^audio\//.test(file.type) || /\.(mp3|wav|m4a|ogg|oga|flac|aac)$/.test(name)) {
+      var am = name.match(/\.(mp3|wav|m4a|ogg|oga|flac|aac)$/);
+      var aext = am ? am[1] : 'mp3';
+      return fileToB64Raw(file).then(function (b64) {
+        var path = 'audio/' + slug + '.' + aext;
+        return ghPut(path, b64, 'Add link audio: ' + slug).then(function () {
+          return { kind: 'audio', src: path, filename: file.name };
+        });
+      });
+    }
+    // otherwise treat as video (mp4): grab a poster frame first
+    return captureVideoThumb(file).then(function (thumbB64) {
+      var thumbPath = '';
+      var pre = Promise.resolve();
+      if (thumbB64) {
+        thumbPath = 'images/links/' + slug + '-thumb.jpg';
+        pre = ghPut(thumbPath, thumbB64, 'Add link video thumb: ' + slug);
+      }
+      return pre.then(function () { return fileToB64Raw(file); }).then(function (b64) {
+        var path = 'videos/' + slug + '.mp4';
+        return ghPut(path, b64, 'Add link video: ' + slug).then(function () {
+          return { kind: 'video', src: path, filename: file.name, thumb: thumbPath };
+        });
+      });
+    });
+  }
+
+  $('linkMedia').addEventListener('change', function () {
+    filePreview($('linkMediaPreview'), $('linkMedia').files);
+  });
+
   $('addLinkForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var btn = $('addLinkBtn'); btn.disabled = true;
-    status('Saving link…', 'busy');
-    readJsonFile('data/links.json').then(function (f) {
-      f.data.push({
-        title: $('linkTitle').value.trim(),
-        url: $('linkUrl').value.trim(),
-        note: $('linkNote').value.trim(),
-        date: today()
+    var title = $('linkTitle').value.trim();
+    var mediaFile = $('linkMedia').files[0];
+    if (mediaFile && tooBig(mediaFile)) { btn.disabled = false; return; }
+    var sup = collectSupRows($('addLinkForm'));
+    var slug = slugify(title) + '-' + Date.now().toString(36);
+
+    status(mediaFile ? 'Uploading media…' : 'Saving link…', 'busy');
+    var mediaP = mediaFile ? uploadLinkMedia(mediaFile, slug) : Promise.resolve(null);
+
+    mediaP.then(function (media) {
+      status('Saving link…', 'busy');
+      return readJsonFile('data/links.json').then(function (f) {
+        var entry = {
+          title: title,
+          url: $('linkUrl').value.trim(),
+          note: $('linkNote').value.trim(),
+          date: today()
+        };
+        if (sup.length) entry.links = sup;
+        if (media) entry.media = media;
+        f.data.push(entry);
+        return writeJsonFile('data/links.json', f.data, 'Add link: ' + title, f.sha);
       });
-      return writeJsonFile('data/links.json', f.data, 'Add link: ' + $('linkTitle').value.trim(), f.sha);
     }).then(function () {
       status('Link saved. It’ll be live in about a minute (GitHub Pages rebuild).', 'ok');
       $('addLinkForm').reset();
+      $('linkSupList').innerHTML = '';
+      $('linkMediaPreview').innerHTML = '';
       loadLists();
     }).catch(function (err) { status(err.message, 'err'); })
       .finally(function () { btn.disabled = false; });
@@ -1402,223 +1415,6 @@
         });
     }).then(function () { status('Project deleted.', 'ok'); loadLists(); })
       .catch(function (err) { status(err.message, 'err'); });
-  });
-
-  /* ================= FEED MANAGER ================= */
-  // Aggregates every section so you can reorder posts and block any single one
-  // from the Feed or from its own page. Mirrors the keys/dates used in main.js.
-  var feed = { cfg: null, sha: null, items: [], display: [], sets: [], loaded: false };
-
-  function feedDefaultCfg() {
-    return {
-      title: 'Feed',
-      intro: 'Everything in one place, newest first.',
-      sort: 'newest',
-      order: [],
-      sources: [
-        { key: 'projects', label: 'Project', file: 'data/projects.json', page: 'projects.html', enabled: true },
-        { key: 'videos',   label: 'Video',   file: 'data/videos.json',   page: 'videos.html',   enabled: true },
-        { key: 'music',    label: 'Music',   file: 'data/music.json',     page: 'music.html',     enabled: true },
-        { key: 'links',    label: 'Link',    file: 'data/links.json',     page: 'about.html',     enabled: true }
-      ]
-    };
-  }
-
-  // MUST stay identical to feedDateVal / feedKey in main.js
-  function feedDateVal(s) {
-    var m = String(s || '').match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-    if (!m) return 0;
-    var y = +m[3]; if (y < 100) y += 2000;
-    return new Date(y, (+m[1]) - 1, +m[2]).getTime();
-  }
-  function feedKeyOf(srcKey, item, i) {
-    var base = item.id || item.url || item.src || (item.title + '|' + (item.date || '') + '|' + i);
-    return srcKey + '::' + base;
-  }
-  function feedThumbOf(key, item) {
-    if (key === 'projects') return (item.images && item.images[0]) || '';
-    return item.thumb || '';
-  }
-
-  function loadFeedManager() {
-    $('feedItems').innerHTML = '<p class="empty-note">Loading…</p>';
-    readJsonFile('data/feed.json').then(function (f) {
-      var cfg = (f.data && f.data.sources) ? f.data : feedDefaultCfg();
-      feed.sha = f.sha;
-      feed.cfg = cfg;
-      $('feedTitleInput').value = cfg.title || '';
-      $('feedIntroInput').value = cfg.intro || '';
-      $('feedSort').value = cfg.sort || 'newest';
-      return Promise.all(cfg.sources.map(function (s) {
-        return readJsonFile(s.file)
-          .then(function (rf) { return { s: s, sha: rf.sha, rows: rf.data || [] }; })
-          .catch(function () { return { s: s, sha: null, rows: [] }; });
-      })).then(function (sets) {
-        feed.sets = sets;
-        var items = [];
-        sets.forEach(function (set) {
-          set.rows.forEach(function (item, i) {
-            items.push({
-              srcKey: set.s.key,
-              label: set.s.label || set.s.key,
-              file: set.s.file,
-              idx: i,
-              key: feedKeyOf(set.s.key, item, i),
-              title: item.title || '(untitled)',
-              date: item.date || '',
-              dateVal: feedDateVal(item.date),
-              thumb: feedThumbOf(set.s.key, item),
-              hide: (item.hide || []).slice()
-            });
-          });
-        });
-        feed.items = items;
-        renderFeedSources();
-        orderFeedItems();
-        renderFeedItems();
-      });
-    }).catch(function (err) {
-      $('feedItems').innerHTML = '<p class="empty-note">Could not load: ' + esc(err.message) + '</p>';
-    });
-  }
-
-  function renderFeedSources() {
-    $('feedSources').innerHTML = feed.cfg.sources.map(function (s, i) {
-      return '<label style="display:inline-flex;gap:6px;margin-right:18px;align-items:center">' +
-        '<input type="checkbox" data-feed-src="' + i + '"' + (s.enabled !== false ? ' checked' : '') + '> ' +
-        esc(s.label || s.key) + '</label>';
-    }).join('');
-  }
-
-  function orderFeedItems() {
-    var mode = $('feedSort').value;
-    var arr = feed.items.slice();
-    if (mode === 'manual') {
-      var idx = {}; (feed.cfg.order || []).forEach(function (k, n) { idx[k] = n; });
-      arr.sort(function (a, b) {
-        var ia = (a.key in idx) ? idx[a.key] : Infinity;
-        var ib = (b.key in idx) ? idx[b.key] : Infinity;
-        if (ia !== ib) return ia - ib;
-        return b.dateVal - a.dateVal;
-      });
-    } else {
-      var dir = (mode === 'oldest') ? 1 : -1;
-      arr.sort(function (a, b) { return dir * (a.dateVal - b.dateVal); });
-    }
-    feed.display = arr;
-  }
-
-  function renderFeedItems() {
-    if (!feed.display.length) { $('feedItems').innerHTML = '<p class="empty-note">No posts yet.</p>'; return; }
-    var manual = $('feedSort').value === 'manual';
-    $('feedItems').innerHTML = feed.display.map(function (it) {
-      var thumb = it.thumb
-        ? '<img class="fr-thumb" src="' + esc(it.thumb) + '" alt="">'
-        : '<div class="fr-noimg">' + esc(it.label) + '</div>';
-      var feedOn = it.hide.indexOf('feed') === -1;
-      var pageOn = it.hide.indexOf(it.srcKey) === -1;
-      var moves = manual
-        ? '<div class="fr-move"><button type="button" data-feed-up="' + esc(it.key) + '">&#9650;</button>' +
-          '<button type="button" data-feed-down="' + esc(it.key) + '">&#9660;</button></div>'
-        : '';
-      return '<div class="feed-row">' + thumb +
-        '<div class="fr-main"><div class="fr-title">' + esc(it.title) + '</div>' +
-        '<div class="fr-meta"><span class="fr-tag">' + esc(it.label) + '</span> &middot; ' + esc(it.date || '') + '</div></div>' +
-        '<div class="fr-toggles">' +
-          '<label><input type="checkbox" data-feed-toggle="' + esc(it.key) + '" data-page="feed"' + (feedOn ? ' checked' : '') + '> Feed</label>' +
-          '<label><input type="checkbox" data-feed-toggle="' + esc(it.key) + '" data-page="' + esc(it.srcKey) + '"' + (pageOn ? ' checked' : '') + '> Its page</label>' +
-        '</div>' + moves + '</div>';
-    }).join('');
-  }
-
-  function feedItemByKey(k) {
-    for (var i = 0; i < feed.items.length; i++) { if (feed.items[i].key === k) return feed.items[i]; }
-    return null;
-  }
-
-  // visibility toggles + reorder (event delegation)
-  $('feedItems').addEventListener('change', function (e) {
-    var k = e.target.getAttribute('data-feed-toggle');
-    if (!k) return;
-    var page = e.target.getAttribute('data-page');
-    var it = feedItemByKey(k);
-    if (!it) return;
-    var at = it.hide.indexOf(page);
-    if (e.target.checked) { if (at !== -1) it.hide.splice(at, 1); }   // visible -> not hidden
-    else if (at === -1) { it.hide.push(page); }                       // unticked -> hide
-  });
-  $('feedItems').addEventListener('click', function (e) {
-    var up = e.target.getAttribute('data-feed-up');
-    var down = e.target.getAttribute('data-feed-down');
-    var k = up || down;
-    if (!k) return;
-    var pos = feed.display.findIndex(function (x) { return x.key === k; });
-    if (pos === -1) return;
-    var to = up ? pos - 1 : pos + 1;
-    if (to < 0 || to >= feed.display.length) return;
-    var moved = feed.display.splice(pos, 1)[0];
-    feed.display.splice(to, 0, moved);
-    feed.cfg.order = feed.display.map(function (x) { return x.key; });
-    renderFeedItems();
-  });
-
-  $('feedSort').addEventListener('change', function () {
-    if ($('feedSort').value === 'manual' && !(feed.cfg.order || []).length) {
-      feed.cfg.order = feed.display.map(function (x) { return x.key; }); // seed from current view
-    }
-    orderFeedItems();
-    renderFeedItems();
-  });
-  $('feedSources').addEventListener('change', function (e) {
-    var i = e.target.getAttribute('data-feed-src');
-    if (i === null) return;
-    feed.cfg.sources[+i].enabled = e.target.checked;
-  });
-
-  $('feedSave').addEventListener('click', function () {
-    if (!feed.cfg) { status('Open the Feed tab first.', 'err'); return; }
-    var btn = $('feedSave'); btn.disabled = true;
-    status('Saving feed…', 'busy');
-    var cfg = feed.cfg;
-    cfg.title = $('feedTitleInput').value.trim() || 'Feed';
-    cfg.intro = $('feedIntroInput').value;
-    cfg.sort = $('feedSort').value;
-    if (cfg.sort === 'manual') cfg.order = feed.display.map(function (x) { return x.key; });
-
-    // write each item's hide[] back into its own source file (only if changed)
-    var writes = [];
-    feed.sets.forEach(function (set) {
-      var changed = false;
-      set.rows.forEach(function (row, i) {
-        var it = null;
-        for (var j = 0; j < feed.items.length; j++) {
-          if (feed.items[j].file === set.s.file && feed.items[j].idx === i) { it = feed.items[j]; break; }
-        }
-        if (!it) return;
-        var before = JSON.stringify(row.hide || []);
-        if (it.hide && it.hide.length) row.hide = it.hide.slice();
-        else if ('hide' in row) delete row.hide;
-        if (before !== JSON.stringify(row.hide || [])) changed = true;
-      });
-      if (changed) writes.push(writeJsonFile(set.s.file, set.rows, 'Feed: update post visibility', set.sha));
-    });
-    writes.push(writeJsonFile('data/feed.json', cfg, 'Feed: update settings', feed.sha));
-
-    Promise.all(writes).then(function () {
-      status('Feed saved — live after the rebuild (~1 min).', 'ok');
-      btn.disabled = false;
-      feed.loaded = true;
-      loadFeedManager(); // refresh SHAs for the next save
-    }).catch(function (err) {
-      status('Save failed: ' + (err && err.message ? err.message : err), 'err');
-      btn.disabled = false;
-    });
-  });
-
-  // lazy-load the manager the first time the Feed tab is opened
-  var feedTabBtn = document.querySelector('.admin-tabs button[data-tab="tabFeed"]');
-  if (feedTabBtn) feedTabBtn.addEventListener('click', function () {
-    if (!feed.loaded) { feed.loaded = true; loadFeedManager(); }
   });
 
 })();
