@@ -138,10 +138,18 @@ a:hover { color: var(--ember); }
 .bg-layer {
   position: fixed;
   inset: 0;
-  background-image: var(--bg-img, url("../assets/traveller.jpg"));
+  /* Fallback matches the CURRENT landing theme so there is no flash of the
+     old background before main.js applies theme.json. Keep in sync with
+     data/theme.json (landing image) if the theme changes. */
+  background-image: var(--bg-img, url("../images/site/bg-landing-1781534745296.jpg"));
   background-size: cover;
   /* favor the top of the painting so the figure over the hill stays visible */
   background-position: var(--bg-pos, center 18%);
+}
+
+/* Projects page: current-theme fallback (was inheriting the old traveller.jpg) */
+body.projectsbg .bg-layer {
+  background-image: var(--bg-img, url("../images/site/bg-projects-1781535015188.jpg"));
 }
 
 .bg-color { z-index: 0; }
@@ -861,13 +869,4 @@ h2.section-h {
 .tprev .bg-layer, .tprev .mask-wrap, .tprev .bg-vignette { position: absolute; inset: 0; }
 .tprev .bg-color { filter: saturate(1.5) brightness(1.15); }
 .tprev-text {
-  position: absolute; inset: 0; z-index: 3;
-  display: flex; flex-direction: column; gap: 6px;
-  align-items: center; justify-content: center; text-align: center;
-  pointer-events: none;
-}
-.tprev-text h3 { margin: 0; font-size: 24px; font-family: inherit; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7); }
-.tprev-text p, .tprev-text span {
-  margin: 0; font-size: 13px; font-family: inherit;
-  color: var(--paper-dim); text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
-}
+  position: absolute; inset:
