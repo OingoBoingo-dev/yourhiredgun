@@ -618,9 +618,9 @@
   var TH_DEFAULTS = {
     font: TH_FONTS[0],
     pages: {
-      landing: { image: 'assets/traveller.jpg', position: 'center 18%' },
-      links: { image: 'assets/traveller.jpg', position: 'center' },
-      projects: { image: 'assets/traveller.jpg', position: 'center' },
+      landing: { image: 'images/site/bg-landing.jpg', position: 'center 18%' },
+      links: { image: 'images/site/bg-links.jpg', position: 'center' },
+      projects: { image: 'images/site/bg-projects.jpg', position: 'center' },
       videos: { image: 'assets/videos-bg.jpg', position: 'center' },
       music: { image: 'assets/videos-bg.jpg', position: 'center' }
     }
@@ -756,12 +756,16 @@
       t.pages[th.page].position = $('thPos').value;
       var chain = Promise.resolve();
       if (th.pending) {
-        var path = 'images/site/bg-' + th.page + '-' + Date.now() + '.jpg';
+        // Fixed filename per page (overwritten in place). The static CSS
+        // fallback in css/style.css points at these exact paths, so the
+        // pre-JS background can never drift from the live theme — no flash.
+        var path = 'images/site/bg-' + th.page + '.jpg';
         var old = t.pages[th.page].image;
-        chain = ghPut(path, th.pending.split(',')[1], 'Theme: new ' + th.page + ' background').then(function () {
+        chain = ghPutAuto(path, th.pending.split(',')[1], 'Theme: update ' + th.page + ' background').then(function () {
           t.pages[th.page].image = path;
-          // tidy up the previous admin-uploaded background (never the original art)
-          if (/^images\/site\//.test(old)) {
+          // tidy up a previous timestamped upload, but never delete the file
+          // we just wrote (old === path when re-saving the same page)
+          if (/^images\/site\//.test(old) && old !== path) {
             return ghDelete(old, 'Theme: remove old ' + th.page + ' background').catch(function () {});
           }
         });
@@ -1323,12 +1327,4 @@
             chain = chain.then(function () { return ghDelete(p, 'Remove image for deleted project'); });
           });
           if (removed.interactive) {
-            chain = chain.then(function () { return ghDelete(removed.interactive, 'Remove interactive page for deleted project'); });
-          }
-          return chain;
-        });
-    }).then(function () { status('Project deleted.', 'ok'); loadLists(); })
-      .catch(function (err) { status(err.message, 'err'); });
-  });
-
-})();
+            chain = ch

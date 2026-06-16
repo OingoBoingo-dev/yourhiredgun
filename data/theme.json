@@ -6,15 +6,15 @@
   },
   "pages": {
     "landing": {
-      "image": "images/site/bg-landing-1781534745296.jpg",
+      "image": "images/site/bg-landing.jpg",
       "position": "center 18%"
     },
     "links": {
-      "image": "images/site/bg-links-1781534998973.jpg",
+      "image": "images/site/bg-links.jpg",
       "position": "center"
     },
     "projects": {
-      "image": "images/site/bg-projects-1781535015188.jpg",
+      "image": "images/site/bg-projects.jpg",
       "position": "center"
     },
     "videos": {

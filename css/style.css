@@ -138,18 +138,21 @@ a:hover { color: var(--ember); }
 .bg-layer {
   position: fixed;
   inset: 0;
-  /* Fallback matches the CURRENT landing theme so there is no flash of the
-     old background before main.js applies theme.json. Keep in sync with
-     data/theme.json (landing image) if the theme changes. */
-  background-image: var(--bg-img, url("../images/site/bg-landing-1781534745296.jpg"));
+  /* Fixed-filename fallback so the pre-JS background always matches the live
+     theme (admin overwrites these files in place). This is what prevents any
+     flash of an old background before main.js applies theme.json. */
+  background-image: var(--bg-img, url("../images/site/bg-landing.jpg"));
   background-size: cover;
   /* favor the top of the painting so the figure over the hill stays visible */
   background-position: var(--bg-pos, center 18%);
 }
 
-/* Projects page: current-theme fallback (was inheriting the old traveller.jpg) */
+/* Per-page fixed-filename fallbacks (kept in lockstep with data/theme.json). */
 body.projectsbg .bg-layer {
-  background-image: var(--bg-img, url("../images/site/bg-projects-1781535015188.jpg"));
+  background-image: var(--bg-img, url("../images/site/bg-projects.jpg"));
+}
+body.artlinks .bg-layer {
+  background-image: var(--bg-img, url("../images/site/bg-links.jpg"));
 }
 
 .bg-color { z-index: 0; }
@@ -867,6 +870,4 @@ h2.section-h {
   cursor: crosshair;
 }
 .tprev .bg-layer, .tprev .mask-wrap, .tprev .bg-vignette { position: absolute; inset: 0; }
-.tprev .bg-color { filter: saturate(1.5) brightness(1.15); }
-.tprev-text {
-  position: absolute; inset:
+.tprev .bg-color { 
